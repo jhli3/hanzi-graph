@@ -1,0 +1,97 @@
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Fonts ─────────────────────────────────────────────────── */
+:root {
+  --font-hanzi:   'Noto Serif SC', serif;
+  --font-mono:    'DM Mono', monospace;
+  --font-prose:   'Fraunces', serif;
+  --font-ui:      system-ui, -apple-system, sans-serif;
+}
+
+/* ── Colour palette — ink & paper ──────────────────────────── */
+:root {
+  /* Canvas / surfaces */
+  --c-paper:        #F5F2EB;   /* warm off-white canvas */
+  --c-surface:      #FDFCF9;   /* panel surface */
+  --c-surface-2:    #F0EDE4;   /* subtle recessed surface */
+  --c-surface-3:    #E8E4D9;   /* pressed / selected */
+
+  /* Ink */
+  --c-ink-1:        #1A1916;   /* primary text */
+  --c-ink-2:        #4A4844;   /* secondary text */
+  --c-ink-3:        #8A8780;   /* tertiary / muted */
+  --c-ink-4:        #C4C0B8;   /* placeholder / disabled */
+
+  /* Borders */
+  --c-border:       rgba(26,25,22,0.10);
+  --c-border-med:   rgba(26,25,22,0.18);
+  --c-border-strong:rgba(26,25,22,0.32);
+
+  /* Radical nodes — dark ink blocks */
+  --c-radical-bg:   #1A1916;
+  --c-radical-text: #F5F2EB;
+  --c-radical-sub:  #6A6760;
+
+  /* Accent — vermilion (used sparingly: selected state, semantic edges) */
+  --c-accent:       #C0392B;
+  --c-accent-soft:  rgba(192,57,43,0.12);
+
+  /* Edge colours */
+  --c-edge-component: #8A8780;
+  --c-edge-semantic:  #C4C0B8;
+
+  /* Layout */
+  --sidebar-w:      52px;
+  --panel-w:        260px;
+  --radius-sm:      6px;
+  --radius-md:      10px;
+  --radius-lg:      14px;
+  --radius-pill:    999px;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--c-paper);
+  color: var(--c-ink-1);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── React Flow overrides ───────────────────────────────────── */
+.react-flow__background {
+  background-color: var(--c-paper) !important;
+}
+.react-flow__background pattern circle {
+  fill: var(--c-border-med) !important;
+}
+.react-flow__controls {
+  display: none; /* using custom controls */
+}
+.react-flow__minimap {
+  display: none; /* using custom minimap */
+}
+.react-flow__edge-path {
+  stroke-width: 1.5;
+}
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border-strong);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.react-flow__node:hover .react-flow__handle,
+.react-flow__node.selected .react-flow__handle {
+  opacity: 1;
+}
+
+/* ── Scrollbar (panel) ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border-med); border-radius: 2px; }

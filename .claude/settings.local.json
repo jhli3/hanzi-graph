@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/明.json\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); console.log\\('strokes:', d.strokes?.length\\); console.log\\('medians:', JSON.stringify\\(d.medians?.slice\\(0,2\\)\\)\\); console.log\\('keys:', Object.keys\\(d\\)\\)\")",
+      "Bash(curl -s \"https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/%E6%98%8E.json\")",
+      "Bash(node -e \"const d=require\\('/tmp/ming.json'\\); console.log\\('strokes:', d.strokes?.length\\); console.log\\('medians[0]:', JSON.stringify\\(d.medians[0]\\)\\); console.log\\('medians[1]:', JSON.stringify\\(d.medians[1]\\)\\); console.log\\('keys:', Object.keys\\(d\\)\\)\")"
+    ]
+  }
+}
