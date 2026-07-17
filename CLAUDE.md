@@ -47,7 +47,8 @@ src/
 ├── components/
 │   ├── HanziNode.jsx        ← Custom React Flow node (80×80px, radical/compound variants)
 │   ├── HanziEdges.jsx       ← ComponentEdge (solid) + SemanticEdge (dashed)
-│   ├── DetailPanel.jsx      ← Right panel: components, note, stroke count, audio, related
+│   ├── DetailPanel.jsx      ← Right panel: components, note, stroke order, audio, related
+│   ├── StrokeOrderWriter.jsx ← Hanzi Writer stroke animation (CDN data, error fallback)
 │   └── AddCharacterModal.jsx ← Two-stage: pinyin search → confirm + annotate
 │
 └── styles/
@@ -100,7 +101,11 @@ Changing tokens updates the whole app — no hunting through component files.
 - Double-click a pinned node to release it back into the simulation
 - `reheat()` fires automatically when nodes/edges are added/removed
 
-**Persistence**: `localStorage` keys `hanzi-graph-nodes` and `hanzi-graph-edges`. Reset to seed data via sidebar button (with confirm dialog).
+**Stroke order** (`StrokeOrderWriter.jsx`):
+- Hanzi Writer renders stroke animation in the detail panel; data fetched per character from the hanzi-writer-data CDN
+- Status state machine: `idle | loading | ready | error | animating`; missing characters show an error overlay
+
+**Persistence**: `localStorage` keys `hanzi-graph-nodes` and `hanzi-graph-edges` (frozen — schema changes need an explicit decision, existing graphs must survive). Reset to seed data via sidebar button (with confirm dialog).
 
 ---
 
@@ -115,28 +120,45 @@ The parse script skips: surname entries, "name of" entries, variants. On conflic
 
 ---
 
+## Verification
+
+The gates. One command runs everything: `bash tools/check-all.sh`
+
+| Check | Command | What it catches |
+|---|---|---|
+| Graph data | `node tools/check-graph-data.mjs` | Broken seed nodes/edges, invalid/missing cedict.json |
+| Authored state | `node tools/check-authored-state.mjs` | Silent changes to design tokens or seed data. `BAKE=1` allows them — only for commits baking Jen's own authored values |
+| Docs | `node tools/check-docs.mjs` | Missing required sections in PRD/BACKLOG/CLAUDE.md |
+| Build | `npm run build` | Syntax/import errors |
+
+UI-touching commits additionally run the manual browser smoke in `tools/SMOKE.md`, exactly as written. Never modify `tools/` checkers in the same commit as implementation changes.
+
+Direction lives in **PRD.md**; the work queue with autonomy labels lives in **BACKLOG.md**; delegated runs start from **ORCHESTRATION.md**.
+
+---
+
 ## Planned / in-progress features
 
-### Etymology trails (explored, not yet built)
+> Scope decided in PRD.md v1.0 (2026-07-17) — the sections below are kept as
+> design context for the *cut* features. The active queue is BACKLOG.md.
+
+### Etymology trails (explored — CUT from v1, prototypes preserved)
 Interactive scrubber showing how a character's visual form evolved: oracle bone → bronze script → seal script → modern. Two animation modes explored in prototype:
 - **Morph** — crossfade between hand-drawn canvas renderings of each historical form
 - **Particles** — origin form dissolves into ink particles, reforms as next stage
 
 Data approach: manual for now (tracing historical forms as canvas paths is slow but is itself a learning exercise). Future: source actual oracle bone rubbings as reference images, or find an existing SVG glyph dataset. Would live in the detail panel or as a full-screen overlay — not yet decided.
 
-### Character scene animations (explored, not yet built)
+### Character scene animations (explored — CUT from v1)
 Ambient canvas illustrations that play when a character is selected — e.g. 鱼 shows an ink-style fish pond, 森 shows trees with falling leaves, 日 shows a sunrise. Aesthetic reference: Bao Thien's portfolio (baothiento.com) — warm off-white, organic ink mark-making, minimal color, things that feel alive but quiet. Would sit in the detail panel replacing the stroke count placeholder.
 
-### Stage 2 backlog
-- [ ] Full Hanzi Writer stroke order animation + practice mode
-- [ ] Edge label editing (click an edge to rename it)
-- [ ] Floating node context menu (right-click)
-- [ ] Graph search / filter by radical or semantic cluster
-- [ ] Compound word discovery (surface common compounds when a character is added)
-- [ ] Spaced repetition surfacing (subtle indicator for unvisited characters)
-- [ ] Semantic field colouring (tint nodes by meaning cluster)
-- [ ] Supabase migration for multi-device sync
-- [ ] Shareable read-only graph URLs
+### Work queue
+Superseded by **BACKLOG.md** (2026-07-17). Stroke order animation is built
+(`StrokeOrderWriter.jsx`); practice mode, edge labels, context menu, and
+search/filter are queued there with autonomy labels. Compound discovery and
+spaced-repetition surfacing sit in the 🧪 prototype lane (Jen explores first).
+Supabase sync, shareable URLs, and semantic colouring are cut — see PRD.md
+§ Non-goals.
 
 ---
 
