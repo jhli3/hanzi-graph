@@ -15,8 +15,8 @@ const require_ = (file, sections) => {
   for (const s of sections) if (!text.includes(s)) fail(`${file}: missing required section "${s}"`);
 };
 
-require_('PRD.md', ['## Vision', '## v1 Scope', '## Non-goals', '## Open questions', '## Success criteria']);
-require_('BACKLOG.md', ['## Autonomy legend', '## Worker protocol', '## Worker notes', '🟢', '🟡', '🔴']);
+require_('docs/PRD.md', ['## Vision', '## v1 Scope', '## Non-goals', '## Open questions', '## Success criteria']);
+require_('docs/BACKLOG.md', ['## Autonomy legend', '## Worker protocol', '## Worker notes', '🟢', '🟡', '🔴']);
 require_('CLAUDE.md', ['## Design tokens', '## Verification']);
 
 if (!failures) ok('PRD.md, BACKLOG.md, CLAUDE.md structure valid');
