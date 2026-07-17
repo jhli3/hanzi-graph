@@ -38,7 +38,7 @@ function buildPinyinIndex(dict) {
 async function loadDict() {
   if (cachedDict) return cachedDict;
   if (!fetchPromise) {
-    fetchPromise = fetch('/cedict.json')
+    fetchPromise = fetch(`${import.meta.env.BASE_URL}cedict.json`)
       .then(r => {
         if (!r.ok) throw new Error(`Failed to load cedict.json (${r.status})`);
         return r.json();
