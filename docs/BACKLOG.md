@@ -20,6 +20,7 @@ it wins over this file when they conflict.**
 | D1 | Curated seed graph: which 3–4 character clusters, which characters | Jen |
 | D2 | Reset-to-seed affordance: keep sidebar button or make prominent for demo visitors | Jen |
 | D3 | Etymology prototypes: move to `/prototypes` or log to creative coding library and remove | Jen |
+| D4 | v1.1 sync: backend (Supabase vs. alt), sign-in method, offline conflict model | Jen |
 
 ## Worker protocol (every task, no exceptions)
 
@@ -158,6 +159,40 @@ Vercel/Netlify account, project link, first deploy. Requires her accounts — wo
 ### BL-5.7 — Stranger test (Jen)
 One person, no coaching, 2 minutes. Note where they stall. Findings feed PRD.
 
+## Phase 6 — v1.1 · Cross-device sync (post-v1)
+
+> Post-v1 commitment (PRD § Committed next). **Owner-only** durable sync: Jen's
+> graph persists to a cloud store, survives browser wipes, and follows her across
+> devices. Portfolio visitors keep the localStorage fork untouched — no auth wall,
+> ever. **Nothing here blocks the v1 ship**, and the whole phase gates on D4.
+
+### BL-6.1 🔴 Sync backend, auth & conflict model (D4)
+Present options with tradeoffs and wait for Jen's pick:
+- **Backend** — Supabase vs. alternatives (Firebase, a minimal custom API).
+- **Sign-in** — magic link vs. OAuth.
+- **Conflict model** — same graph edited offline on two devices: last-write-wins vs. merge.
+This choice adds an npm dependency **and** changes how the frozen `hanzi-graph-nodes/edges` keys are used (cloud becomes source of truth) — both forbidden to a worker unilaterally, so it gates every task below.
+**Refs:** PRD.md § Committed next (v1.1), § Open questions
+**Done when:** backend, sign-in method, and conflict model are recorded here and D4 is closed.
+
+### BL-6.2 🟢 Auth & session (depends BL-6.1; authorizes the chosen SDK dep)
+Sign-in / sign-out UI for Jen using the picked method; session persists across reloads. Signed-out state is byte-identical to today's app (localStorage-only) — visitors never see auth.
+**Refs:** src/App.jsx, chosen backend SDK docs
+**Done when:** Jen signs in and out; signed-out behavior matches the current app exactly.
+**Verify:** `bash tools/check-all.sh` + SMOKE.md, adding: sign in, reload, sign out.
+
+### BL-6.3 🟢 Cloud persistence layer (depends BL-6.2)
+On sign-in the cloud copy is authoritative; localStorage becomes an offline write-through cache. Preserve the frozen key shapes (no schema migration without a separate 🔴). Graph mutations write through to the cloud when signed in. Implement the conflict model picked in BL-6.1.
+**Refs:** src/hooks/useGraphStore.js, PRD § Committed next
+**Done when:** a character added on device A appears on device B after sign-in; offline edits flush on reconnect.
+**Verify:** `bash tools/check-all.sh` + SMOKE.md, plus the two-device route above.
+
+### BL-6.4 🟢 First-sign-in migration (depends BL-6.3)
+On Jen's first sign-in, upload her existing localStorage graph to the cloud with no loss (frozen-keys rule: existing graphs must survive). Idempotent — signing in on an already-synced device never duplicates.
+**Refs:** src/hooks/useGraphStore.js, CLAUDE.md § Persistence
+**Done when:** a device with a pre-existing local graph, on first sign-in, ends with that graph in the cloud, nothing lost or duplicated.
+**Verify:** `bash tools/check-all.sh` + SMOKE.md.
+
 ## 🧪 Prototype lane — Jen's explorations (not for workers)
 
 > **These are yours.** Cheap, time-boxed prototypes — a single HTML file or a
@@ -171,7 +206,7 @@ One person, no coaching, 2 minutes. Note where they stall. Findings feed PRD.
 ## Deliberately NOT in this backlog
 
 - Etymology trails & character scene animations — cut in PRD v1.0 (unbounded per-character art cost). Prototypes preserved pending D3.
-- Supabase sync, shareable URLs — superseded by deployed-demo story.
+- Shareable read-only URLs — superseded by deployed-demo story. (Cross-device sync is now Phase 6 / v1.1, no longer cut.)
 - Semantic field colouring — not selected for v1.
 - Any localStorage schema migration — requires a 🔴 first.
 
@@ -180,7 +215,8 @@ One person, no coaching, 2 minutes. Note where they stall. Findings feed PRD.
 🟢 lane, serial (shared files noted): BL-0.4 → BL-1.1 → BL-1.2 → BL-2.1 → BL-2.3 → BL-2.2 → BL-3.1 → BL-3.2 → BL-3.3 → BL-4.1 → BL-4.2.
 Phases 2–3 all touch `App.jsx`/store — keep serial. BL-1.x is disjoint from Phase 2 and could run parallel in a worktree.
 Batch for Jen (one sitting): D1–D3 decisions + 🟡 hand-offs (BL-5.3 tuning, BL-5.5 voice pass) + prototype lane whenever it calls to you.
-BL-5.2/5.3/5.5 unblock only after their decisions/builds; BL-5.6/5.7 close the project.
+BL-5.2/5.3/5.5 unblock only after their decisions/builds; BL-5.6/5.7 close v1.
+Phase 6 (v1.1) is post-ship: D4 first (its own sitting), then BL-6.2 → BL-6.3 → BL-6.4 serial. Do not start it until v1 is out.
 
 ## Worker notes
 
