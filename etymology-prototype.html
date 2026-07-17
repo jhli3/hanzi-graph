@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Etymology Trail · 日</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400&family=DM+Mono&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #F5F3EE; }
+    body { display: flex; align-items: center; justify-content: center; }
+
+    /* ── era label ──────────────────────────────────────────────────────────── */
+    #overlay {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    #era-block {
+      margin-top: 48px; text-align: center;
+      opacity: 0; transition: opacity 0.75s ease;
+    }
+    #era-label {
+      font-family: 'Noto Serif SC', 'Noto Serif', Georgia, serif;
+      font-size: 14px; letter-spacing: 0.16em; color: #1E1E1C;
+    }
+    #era-sub {
+      margin-top: 6px;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      font-size: 10px; letter-spacing: 0.13em;
+      color: #1E1E1C; opacity: 0.42;
+    }
+
+    /* ── dots + hint ────────────────────────────────────────────────────────── */
+    #dots {
+      position: fixed; bottom: 56px;
+      display: flex; gap: 8px;
+    }
+    .dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #1E1E1C; opacity: 0.18;
+      transition: opacity 0.4s ease;
+    }
+    .dot.active { opacity: 0.55; }
+    #hint {
+      position: fixed; bottom: 32px;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      font-size: 10px; letter-spacing: 0.1em;
+      color: #1E1E1C; opacity: 0.28;
+    }
+
+    /* ── control panel ──────────────────────────────────────────────────────── */
+    #panel {
+      position: fixed; right: 24px; top: 50%;
+      transform: translateY(-50%);
+      width: 192px;
+      background: #FFFFFF;
+      border: 1px solid rgba(30,30,28,0.1);
+      border-radius: 6px;
+      padding: 14px 14px 16px;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      font-size: 10px; color: #1E1E1C;
+      overflow-y: auto; max-height: 88vh;
+      box-shadow: 0 2px 12px rgba(30,30,28,0.06);
+    }
+
+    .psection { margin-bottom: 14px; }
+    .psection:last-child { margin-bottom: 0; }
+
+    .psection-title {
+      font-size: 9px; letter-spacing: 0.13em;
+      text-transform: uppercase; opacity: 0.35;
+      padding-bottom: 7px; margin-bottom: 9px;
+      border-bottom: 1px solid rgba(30,30,28,0.08);
+    }
+
+    .param { margin-bottom: 8px; }
+    .param:last-of-type { margin-bottom: 0; }
+
+    .param-row {
+      display: flex; justify-content: space-between;
+      align-items: baseline; margin-bottom: 3px;
+    }
+    .param-name { opacity: 0.6; }
+    .param-val  { opacity: 0.9; min-width: 38px; text-align: right; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%; height: 2px;
+      background: rgba(30,30,28,0.15);
+      border-radius: 1px; cursor: pointer; outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #1E1E1C; cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #1E1E1C; border: none; cursor: pointer;
+    }
+
+    .reinit-btn {
+      width: 100%; margin-top: 10px; padding: 6px 0;
+      background: #1E1E1C; color: #F5F3EE;
+      border: none; border-radius: 3px;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      font-size: 10px; letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+    .reinit-btn:hover { background: #3A3A38; }
+
+    .reset-link {
+      display: block; text-align: center;
+      margin-top: 8px; font-size: 9px;
+      opacity: 0.35; cursor: pointer;
+      letter-spacing: 0.06em;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .reset-link:hover { opacity: 0.6; }
+  </style>
+</head>
+<body>
+
+  <div id="overlay">
+    <div id="era-block">
+      <div id="era-label"></div>
+      <div id="era-sub"></div>
+    </div>
+  </div>
+  <div id="dots"></div>
+  <div id="hint">click · space · → to step forward</div>
+
+  <!-- ── control panel ────────────────────────────────────────────────────── -->
+  <div id="panel">
+
+    <div class="psection">
+      <div class="psection-title">particles</div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">count</span>
+          <span class="param-val" id="v-n">420</span>
+        </div>
+        <input type="range" id="s-n" min="60" max="800" value="420" step="10" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">size</span>
+          <span class="param-val" id="v-size">1.2</span>
+        </div>
+        <input type="range" id="s-size" min="0.3" max="5" value="1.2" step="0.1" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">size boost</span>
+          <span class="param-val" id="v-sizeboost">0.8</span>
+        </div>
+        <input type="range" id="s-sizeboost" min="0" max="3" value="0.8" step="0.1" />
+      </div>
+      <button class="reinit-btn" id="btn-reinit">↺ reinitialize</button>
+    </div>
+
+    <div class="psection">
+      <div class="psection-title">motion</div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">spring</span>
+          <span class="param-val" id="v-spring">0.10</span>
+        </div>
+        <input type="range" id="s-spring" min="0.01" max="0.35" value="0.10" step="0.01" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">damping</span>
+          <span class="param-val" id="v-damping">0.82</span>
+        </div>
+        <input type="range" id="s-damping" min="0.5" max="0.97" value="0.82" step="0.01" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">stagger</span>
+          <span class="param-val" id="v-stagger">0.42</span>
+        </div>
+        <input type="range" id="s-stagger" min="0" max="0.95" value="0.42" step="0.02" />
+      </div>
+    </div>
+
+    <div class="psection">
+      <div class="psection-title">noise</div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">at rest</span>
+          <span class="param-val" id="v-nrest">0.30</span>
+        </div>
+        <input type="range" id="s-nrest" min="0" max="4" value="0.30" step="0.05" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">peak</span>
+          <span class="param-val" id="v-npeak">4.5</span>
+        </div>
+        <input type="range" id="s-npeak" min="0" max="14" value="4.5" step="0.25" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">field scale</span>
+          <span class="param-val" id="v-nscale">0.007</span>
+        </div>
+        <input type="range" id="s-nscale" min="0.001" max="0.04" value="0.007" step="0.001" />
+      </div>
+    </div>
+
+    <div class="psection">
+      <div class="psection-title">transition</div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">duration (fr)</span>
+          <span class="param-val" id="v-tdur">100</span>
+        </div>
+        <input type="range" id="s-tdur" min="20" max="260" value="100" step="5" />
+      </div>
+      <div class="param">
+        <div class="param-row">
+          <span class="param-name">trail opacity</span>
+          <span class="param-val" id="v-trail">20</span>
+        </div>
+        <input type="range" id="s-trail" min="3" max="90" value="20" step="1" />
+      </div>
+    </div>
+
+    <span class="reset-link" id="btn-reset">reset defaults</span>
+  </div>
+
+  <script>
+  /* ─── defaults ──────────────────────────────────────────────────────────── */
+
+  const DEFAULTS = {
+    N:          420,
+    size:       1.2,
+    sizeBoost:  0.8,
+    spring:     0.10,
+    damping:    0.82,
+    stagger:    0.42,
+    noiseRest:  0.30,
+    noisePeak:  4.5,
+    noiseScale: 0.007,
+    transDur:   100,
+    trailAlpha: 20,
+  };
+
+  const P = { ...DEFAULTS };
+
+  /* ─── slider binding ────────────────────────────────────────────────────── */
+
+  const SLIDERS = [
+    ['s-n',         'v-n',         'N',          v => String(Math.round(v))],
+    ['s-size',      'v-size',      'size',       v => v.toFixed(1)],
+    ['s-sizeboost', 'v-sizeboost', 'sizeBoost',  v => v.toFixed(1)],
+    ['s-spring',    'v-spring',    'spring',     v => v.toFixed(2)],
+    ['s-damping',   'v-damping',   'damping',    v => v.toFixed(2)],
+    ['s-stagger',   'v-stagger',   'stagger',    v => v.toFixed(2)],
+    ['s-nrest',     'v-nrest',     'noiseRest',  v => v.toFixed(2)],
+    ['s-npeak',     'v-npeak',     'noisePeak',  v => v.toFixed(2)],
+    ['s-nscale',    'v-nscale',    'noiseScale', v => v.toFixed(3)],
+    ['s-tdur',      'v-tdur',      'transDur',   v => String(Math.round(v))],
+    ['s-trail',     'v-trail',     'trailAlpha', v => String(Math.round(v))],
+  ];
+
+  SLIDERS.forEach(([slId, vlId, key, fmt]) => {
+    const sl = document.getElementById(slId);
+    const vl = document.getElementById(vlId);
+    sl.addEventListener('input', () => {
+      P[key] = parseFloat(sl.value);
+      vl.textContent = fmt(P[key]);
+    });
+  });
+
+  function applyDefaults() {
+    Object.assign(P, DEFAULTS);
+    SLIDERS.forEach(([slId, vlId, key, fmt]) => {
+      document.getElementById(slId).value = DEFAULTS[key];
+      document.getElementById(vlId).textContent = fmt(DEFAULTS[key]);
+    });
+  }
+
+  document.getElementById('btn-reset').addEventListener('click', applyDefaults);
+
+  // Reinit wired up after p5 initializes
+  let doReinit = null;
+  document.getElementById('btn-reinit').addEventListener('click', () => {
+    if (doReinit) doReinit();
+  });
+
+  /* ─── shape samplers ────────────────────────────────────────────────────── */
+
+  const CX = 230, CY = 235, S = 88;
+
+  // Oracle bone 日: rough oval + inner horizontal dash (not a dot cluster)
+  function oracleBone(n) {
+    const pts   = [];
+    const nOval = Math.round(n * 0.80);
+    const nDash = n - nOval;
+
+    for (let i = 0; i < nOval; i++) {
+      const t   = (i / nOval) * Math.PI * 2 + (Math.random() - 0.5) * 0.18;
+      const jit = 1 + (Math.random() - 0.5) * 0.08;
+      pts.push([
+        CX + Math.cos(t) * S * 0.74 * jit,
+        CY + Math.sin(t) * S * jit,
+      ]);
+    }
+
+    // Inner mark: short horizontal dash — NOT a dot cluster
+    for (let i = 0; i < nDash; i++) {
+      const t = (i / nDash) - 0.5;                     // -0.5 → 0.5
+      pts.push([
+        CX + t * S * 0.28 + (Math.random() - 0.5) * 2,
+        CY + (Math.random() - 0.5) * 3,
+      ]);
+    }
+
+    return pts;
+  }
+
+  // Seal script 日: tall narrow rect + bar
+  function sealScript(n) { return sampleRect(n, S * 0.42, S * 0.92); }
+
+  // Modern 日: standard rect + bar
+  function modern(n) { return sampleRect(n, S * 0.52, S * 0.80); }
+
+  // Rect outline + horizontal bar sampler
+  function sampleRect(n, w, h) {
+    const pts    = [];
+    const nPerim = Math.round(n * 0.95);
+    const nStray = n - nPerim;
+
+    const segs = [
+      [[CX - w, CY - h], [CX + w, CY - h]],
+      [[CX + w, CY - h], [CX + w, CY + h]],
+      [[CX + w, CY + h], [CX - w, CY + h]],
+      [[CX - w, CY + h], [CX - w, CY - h]],
+      [[CX - w, CY    ], [CX + w, CY    ]],
+    ];
+
+    const lens = segs.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
+    const tot  = lens.reduce((a, b) => a + b, 0);
+
+    for (let i = 0; i < nPerim; i++) {
+      let r = Math.random() * tot;
+      for (let j = 0; j < segs.length; j++) {
+        if (r <= lens[j]) {
+          const t = r / lens[j];
+          const [a, b] = segs[j];
+          pts.push([
+            a[0] + t * (b[0] - a[0]) + (Math.random() - 0.5) * 1.8,
+            a[1] + t * (b[1] - a[1]) + (Math.random() - 0.5) * 1.8,
+          ]);
+          break;
+        }
+        r -= lens[j];
+      }
+    }
+
+    // Very few stray particles — just enough for ink-bleed texture
+    for (let i = 0; i < nStray; i++) {
+      pts.push([
+        CX + (Math.random() - 0.5) * w * 1.4,
+        CY + (Math.random() - 0.5) * h * 1.4,
+      ]);
+    }
+
+    return pts;
+  }
+
+  /* ─── eras ──────────────────────────────────────────────────────────────── */
+
+  const ERAS = [
+    { label: '甲骨文', sub: 'Oracle Bone  ·  c. 1200 bce', fn: oracleBone },
+    { label: '篆書',   sub: 'Seal Script  ·  c. 221 bce',  fn: sealScript },
+    { label: '楷書',   sub: 'Regular Script  ·  today',    fn: modern     },
+  ];
+
+  /* ─── dots ──────────────────────────────────────────────────────────────── */
+
+  const dotsEl = document.getElementById('dots');
+  ERAS.forEach(() => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    dotsEl.appendChild(d);
+  });
+
+  function updateDots(i) {
+    dotsEl.querySelectorAll('.dot').forEach((d, j) => d.classList.toggle('active', j === i));
+  }
+
+  /* ─── label ─────────────────────────────────────────────────────────────── */
+
+  const eraBlock = document.getElementById('era-block');
+  const eraLabel = document.getElementById('era-label');
+  const eraSub   = document.getElementById('era-sub');
+  let   labelTimer;
+
+  function showLabel(i) {
+    eraLabel.textContent = ERAS[i].label;
+    eraSub.textContent   = ERAS[i].sub;
+    eraBlock.style.opacity = '1';
+    clearTimeout(labelTimer);
+    labelTimer = setTimeout(() => { eraBlock.style.opacity = '0'; }, 2400);
+    updateDots(i);
+  }
+
+  /* ─── p5 sketch ─────────────────────────────────────────────────────────── */
+
+  const MAX_N = 800;
+
+  new p5(p => {
+    const W = 460, H = 470;
+    let era = 0, frame = 0;
+    let inTrans = false, tFrame = 0, tDur = 115;
+    let pts = [];
+
+    function sampleEra(e, n) {
+      return ERAS[e].fn(n).sort(() => Math.random() - 0.5);
+    }
+
+    function buildParticles(targets) {
+      return Array.from({ length: MAX_N }, (_, i) => ({
+        x:  CX + (Math.random() - 0.5) * W * 0.85,
+        y:  CY + (Math.random() - 0.5) * H * 0.85,
+        vx: 0, vy: 0,
+        tx: targets[i % targets.length][0],
+        ty: targets[i % targets.length][1],
+        no: Math.random() * 1000,
+        delay: i / MAX_N,
+      }));
+    }
+
+    function reassignTargets(targets) {
+      pts.forEach((pt, i) => {
+        pt.tx = targets[i % targets.length][0];
+        pt.ty = targets[i % targets.length][1];
+      });
+    }
+
+    p.setup = function () {
+      p.createCanvas(W, H).parent(document.body);
+      p.noStroke();
+      p.background(245, 243, 238);
+
+      const initTargets = sampleEra(0, MAX_N);
+      pts = buildParticles(initTargets);
+      inTrans = true; tFrame = 0; tDur = 115;
+      showLabel(0);
+    };
+
+    // Expose reinit to the button
+    doReinit = function () {
+      const n = Math.min(Math.round(P.N), MAX_N);
+      const targets = sampleEra(era, n);
+      pts = buildParticles(targets);
+      inTrans = true; tFrame = 0; tDur = Math.round(P.transDur);
+    };
+
+    function advance() {
+      if (inTrans && tFrame < tDur * 0.35) return;
+      era = (era + 1) % ERAS.length;
+      const n = Math.min(Math.round(P.N), MAX_N);
+      const next = sampleEra(era, n);
+      reassignTargets(next);
+      inTrans = true; tFrame = 0; tDur = Math.round(P.transDur);
+      showLabel(era);
+    }
+
+    p.mousePressed = () => {
+      // Don't advance if clicking inside the panel
+      if (p.mouseX < 0 || p.mouseX > W || p.mouseY < 0 || p.mouseY > H) return;
+      advance();
+    };
+    p.keyPressed = () => { if (p.keyCode === 32 || p.keyCode === 39) advance(); };
+
+    p.draw = function () {
+      frame++;
+      const t = frame * 0.0042;
+
+      // Soft trail
+      p.fill(245, 243, 238, P.trailAlpha);
+      p.rect(0, 0, W, H);
+
+      if (inTrans) { tFrame++; if (tFrame >= tDur) inTrans = false; }
+      const tProg = inTrans ? tFrame / tDur : 1;
+      const mid   = inTrans ? Math.sin(tProg * Math.PI) : 0;
+
+      const activeN = Math.min(Math.round(P.N), MAX_N);
+
+      p.noStroke();
+
+      for (let i = 0; i < activeN; i++) {
+        const pt = pts[i];
+
+        // Staggered per-particle easing
+        const pStart = pt.delay * P.stagger;
+        const pProg  = Math.max(0, Math.min(1, (tProg - pStart) / (1 - pStart + 0.001)));
+        const ease   = pProg * pProg * (3 - 2 * pProg);  // smoothstep (unused in physics but available)
+
+        // Spring toward target
+        pt.vx += (pt.tx - pt.x) * P.spring;
+        pt.vy += (pt.ty - pt.y) * P.spring;
+
+        // Noise curl — swirls mid-transition, breathes at rest
+        const nStr = mid * P.noisePeak + P.noiseRest;
+        const ang  = p.noise(pt.x * P.noiseScale, pt.y * P.noiseScale, t + pt.no * 0.0008) * Math.PI * 6;
+        pt.vx += Math.cos(ang) * nStr;
+        pt.vy += Math.sin(ang) * nStr;
+
+        pt.vx *= P.damping;
+        pt.vy *= P.damping;
+        pt.x  += pt.vx;
+        pt.y  += pt.vy;
+
+        const sz    = P.size + mid * P.sizeBoost;
+        const alpha = 188 + mid * 42;
+
+        p.fill(30, 30, 28, alpha);
+        p.circle(pt.x, pt.y, sz);
+      }
+    };
+  });
+  </script>
+</body>
+</html>

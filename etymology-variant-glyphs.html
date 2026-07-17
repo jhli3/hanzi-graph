@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Etymology Trail · 日 — Variant B: Glyph Grid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400&family=DM+Mono&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #F5F3EE; }
+    body { display: flex; align-items: center; justify-content: center; }
+    canvas { cursor: pointer; }
+
+    #overlay { position: fixed; inset: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; }
+    #era-block { margin-top: 48px; text-align: center; opacity: 0; transition: opacity 0.75s ease; }
+    #era-label { font-family: 'Noto Serif SC', Georgia, serif; font-size: 14px; letter-spacing: 0.16em; color: #1E1E1C; }
+    #era-sub { margin-top: 6px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.13em; color: #1E1E1C; opacity: 0.42; }
+    #variant-tag {
+      position: fixed; top: 20px; left: 24px;
+      font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.13em;
+      color: #1E1E1C; opacity: 0.35;
+    }
+
+    #dots { position: fixed; bottom: 56px; display: flex; gap: 8px; }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: #1E1E1C; opacity: 0.18; transition: opacity 0.4s ease; }
+    .dot.active { opacity: 0.55; }
+    #hint { position: fixed; bottom: 32px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #1E1E1C; opacity: 0.28; }
+
+    #panel {
+      position: fixed; right: 24px; top: 50%; transform: translateY(-50%);
+      width: 192px; background: #FFFFFF;
+      border: 1px solid rgba(30,30,28,0.1); border-radius: 6px;
+      padding: 14px 14px 16px;
+      font-family: 'DM Mono', monospace; font-size: 10px; color: #1E1E1C;
+      overflow-y: auto; max-height: 88vh;
+      box-shadow: 0 2px 12px rgba(30,30,28,0.06);
+    }
+    .psection { margin-bottom: 14px; }
+    .psection:last-child { margin-bottom: 0; }
+    .psection-title {
+      font-size: 9px; letter-spacing: 0.13em; text-transform: uppercase; opacity: 0.35;
+      padding-bottom: 7px; margin-bottom: 9px; border-bottom: 1px solid rgba(30,30,28,0.08);
+    }
+    .param { margin-bottom: 8px; }
+    .param:last-of-type { margin-bottom: 0; }
+    .param-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+    .param-name { opacity: 0.6; }
+    .param-val { opacity: 0.9; min-width: 38px; text-align: right; }
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 2px;
+      background: rgba(30,30,28,0.15); border-radius: 1px; cursor: pointer; outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%;
+      background: #1E1E1C; cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: #1E1E1C; border: none; cursor: pointer; }
+
+    .panel-btn {
+      width: 100%; margin-top: 10px; padding: 6px 0;
+      background: #1E1E1C; color: #F5F3EE; border: none; border-radius: 3px;
+      font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.08em; cursor: pointer;
+    }
+    .panel-btn:hover { background: #3A3A38; }
+    .panel-btn.secondary { background: transparent; color: #1E1E1C; border: 1px solid rgba(30,30,28,0.18); }
+    .panel-btn.secondary:hover { background: rgba(30,30,28,0.05); }
+    .reset-link {
+      display: block; text-align: center; margin-top: 8px; font-size: 9px;
+      opacity: 0.35; cursor: pointer; letter-spacing: 0.06em;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .reset-link:hover { opacity: 0.6; }
+    .note { font-size: 9px; opacity: 0.35; margin-top: 4px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <div id="variant-tag">variant b · glyph grid</div>
+  <div id="overlay">
+    <div id="era-block">
+      <div id="era-label"></div>
+      <div id="era-sub"></div>
+    </div>
+  </div>
+  <div id="dots"></div>
+  <div id="hint">click to step · drag to scrub · space / →</div>
+
+  <div id="panel">
+    <div class="psection">
+      <div class="psection-title">grid</div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">cell size</span><span class="param-val" id="v-cell">9</span></div>
+        <input type="range" id="s-cell" min="5" max="16" value="9" step="1" />
+      </div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">stroke width</span><span class="param-val" id="v-stroke">13</span></div>
+        <input type="range" id="s-stroke" min="6" max="26" value="13" step="1" />
+      </div>
+      <div class="note">both rebuild masks — cheap, safe to drag</div>
+    </div>
+
+    <div class="psection">
+      <div class="psection-title">glyphs</div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">idle jitter</span><span class="param-val" id="v-idle">0.18</span></div>
+        <input type="range" id="s-idle" min="0" max="1" value="0.18" step="0.02" />
+      </div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">swap (ms)</span><span class="param-val" id="v-swap">900</span></div>
+        <input type="range" id="s-swap" min="150" max="3000" value="900" step="50" />
+      </div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">flicker</span><span class="param-val" id="v-flicker">0.9</span></div>
+        <input type="range" id="s-flicker" min="0" max="2.5" value="0.9" step="0.05" />
+      </div>
+      <div class="note">flicker is boundary-concentrated: only cells that differ between eras swap during a transition</div>
+    </div>
+
+    <div class="psection">
+      <div class="psection-title">motion</div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">glide</span><span class="param-val" id="v-glide">0.055</span></div>
+        <input type="range" id="s-glide" min="0.01" max="0.2" value="0.055" step="0.005" />
+      </div>
+    </div>
+
+    <div class="psection">
+      <div class="psection-title">ink</div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">alpha</span><span class="param-val" id="v-alpha">0.86</span></div>
+        <input type="range" id="s-alpha" min="0.2" max="1" value="0.86" step="0.02" />
+      </div>
+      <div class="param">
+        <div class="param-row"><span class="param-name">breath</span><span class="param-val" id="v-breath">0.25</span></div>
+        <input type="range" id="s-breath" min="0" max="1" value="0.25" step="0.05" />
+      </div>
+    </div>
+
+    <button class="panel-btn secondary" id="btn-copy">⧉ copy state</button>
+    <span class="reset-link" id="btn-reset">reset defaults</span>
+  </div>
+
+  <script>
+  /* ─── defaults ──────────────────────────────────────────────────────────── */
+
+  const DEFAULTS = {
+    cell:      9,
+    strokeW:   13,
+    idleJit:   0.18,
+    swapMs:    900,
+    flicker:   0.9,
+    glide:     0.055,
+    inkAlpha:  0.86,
+    breath:    0.25,
+  };
+  const P = { ...DEFAULTS };
+
+  const SLIDERS = [
+    ['s-cell',    'v-cell',    'cell',     v => String(Math.round(v)), true ],
+    ['s-stroke',  'v-stroke',  'strokeW',  v => String(Math.round(v)), true ],
+    ['s-idle',    'v-idle',    'idleJit',  v => v.toFixed(2),          false],
+    ['s-swap',    'v-swap',    'swapMs',   v => String(Math.round(v)), false],
+    ['s-flicker', 'v-flicker', 'flicker',  v => v.toFixed(2),          false],
+    ['s-glide',   'v-glide',   'glide',    v => v.toFixed(3),          false],
+    ['s-alpha',   'v-alpha',   'inkAlpha', v => v.toFixed(2),          false],
+    ['s-breath',  'v-breath',  'breath',   v => v.toFixed(2),          false],
+  ];
+
+  SLIDERS.forEach(([slId, vlId, key, fmt, rebuild]) => {
+    const sl = document.getElementById(slId);
+    const vl = document.getElementById(vlId);
+    sl.addEventListener('input', () => {
+      P[key] = parseFloat(sl.value);
+      vl.textContent = fmt(P[key]);
+      if (rebuild) buildCoverage();
+    });
+  });
+
+  function applyDefaults() {
+    Object.assign(P, DEFAULTS);
+    SLIDERS.forEach(([slId, vlId, key, fmt]) => {
+      document.getElementById(slId).value = DEFAULTS[key];
+      document.getElementById(vlId).textContent = fmt(DEFAULTS[key]);
+    });
+    buildCoverage();
+  }
+  document.getElementById('btn-reset').addEventListener('click', applyDefaults);
+
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    const state = JSON.stringify(P, null, 2);
+    console.log('── etymology glyph variant state ──\n' + state);
+    if (navigator.clipboard) navigator.clipboard.writeText(state);
+    const b = document.getElementById('btn-copy');
+    b.textContent = '✓ copied';
+    setTimeout(() => { b.textContent = '⧉ copy state'; }, 1200);
+  });
+
+  /* ─── canvas / geometry (same frame as original) ────────────────────────── */
+
+  const W = 460, H = 470, CX = 230, CY = 235, S = 88;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  /* ─── era masks: draw each historical form as thick strokes, keep the
+     alpha channel as a coverage map (Gingko note: "text as a mask") ───────── */
+
+  function drawOracle(c) {
+    c.beginPath();
+    c.ellipse(CX, CY, S * 0.74, S, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(CX - S * 0.14, CY);
+    c.lineTo(CX + S * 0.14, CY);
+    c.stroke();
+  }
+  function drawRectForm(c, w, h) {
+    c.strokeRect(CX - w, CY - h, w * 2, h * 2);
+    c.beginPath();
+    c.moveTo(CX - w, CY);
+    c.lineTo(CX + w, CY);
+    c.stroke();
+  }
+  const ERA_DRAW = [
+    c => drawOracle(c),
+    c => drawRectForm(c, S * 0.42, S * 0.92),
+    c => drawRectForm(c, S * 0.52, S * 0.80),
+  ];
+
+  const ERAS = [
+    { label: '甲骨文', sub: 'Oracle Bone  ·  c. 1200 bce' },
+    { label: '篆書',   sub: 'Seal Script  ·  c. 221 bce'  },
+    { label: '楷書',   sub: 'Regular Script  ·  today'    },
+  ];
+
+  /* coverage grids: per era, per cell, average mask alpha over the cell.
+     Precomputed once per rebuild — per-frame work is pure array reads. */
+  let gw = 0, gh = 0;
+  let cov = [];   // [3] Float32Array(gw*gh), 0..1
+
+  function buildCoverage() {
+    const cell = Math.round(P.cell);
+    gw = Math.ceil(W / cell); gh = Math.ceil(H / cell);
+    cov = ERA_DRAW.map(draw => {
+      const off = document.createElement('canvas');
+      off.width = W; off.height = H;
+      const oc = off.getContext('2d');
+      oc.strokeStyle = 'white';
+      oc.lineWidth = P.strokeW;
+      oc.lineCap = 'round';
+      draw(oc);
+      const data = oc.getImageData(0, 0, W, H).data;
+      const g = new Float32Array(gw * gh);
+      for (let cy = 0; cy < gh; cy++) {
+        for (let cx = 0; cx < gw; cx++) {
+          let sum = 0, cnt = 0;
+          const x0 = cx * cell, y0 = cy * cell;
+          for (let y = y0; y < Math.min(y0 + cell, H); y += 2) {
+            for (let x = x0; x < Math.min(x0 + cell, W); x += 2) {
+              sum += data[(y * W + x) * 4 + 3];
+              cnt++;
+            }
+          }
+          g[cy * gw + cx] = cnt ? (sum / cnt) / 255 : 0;
+        }
+      }
+      return g;
+    });
+  }
+
+  /* ─── deterministic per-cell hash (Gingko: phase from position, so cells
+     flip on their own rhythm but never drift spatially) ───────────────────── */
+
+  function hash(x, y, seed) {
+    const v = Math.sin(x * 127.1 + y * 311.7 + seed * 43.7) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
+  /* stroke-primitive ramp, light → dense: the character is drawn
+     with the strokes characters are made of */
+  const RAMP = ['丶', '一', '丿', '乚', '十'];
+
+  /* ─── dots / label ──────────────────────────────────────────────────────── */
+
+  const dotsEl = document.getElementById('dots');
+  ERAS.forEach(() => { const d = document.createElement('div'); d.className = 'dot'; dotsEl.appendChild(d); });
+  function updateDots(i) { dotsEl.querySelectorAll('.dot').forEach((d, j) => d.classList.toggle('active', j === i)); }
+
+  const eraBlock = document.getElementById('era-block');
+  const eraLabel = document.getElementById('era-label');
+  const eraSub   = document.getElementById('era-sub');
+  let labelTimer;
+  function showLabel(i) {
+    eraLabel.textContent = ERAS[i].label;
+    eraSub.textContent = ERAS[i].sub;
+    eraBlock.style.opacity = '1';
+    clearTimeout(labelTimer);
+    labelTimer = setTimeout(() => { eraBlock.style.opacity = '0'; }, 2400);
+    updateDots(i);
+  }
+
+  /* ─── scrub state: s unbounded float, era = s mod 3 ─────────────────────── */
+
+  let s = 0, sTarget = 0, shownEra = 0;
+
+  function advance() { sTarget = Math.round(sTarget) + 1; }
+
+  let dragging = false, moved = 0, dragX0 = 0, dragS0 = 0;
+  canvas.addEventListener('pointerdown', e => {
+    dragging = true; moved = 0;
+    dragX0 = e.clientX; dragS0 = sTarget;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    moved = Math.max(moved, Math.abs(e.clientX - dragX0));
+    if (moved > 4) sTarget = dragS0 + (e.clientX - dragX0) / 180;
+  });
+  canvas.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    if (moved <= 4) advance();
+    else sTarget = Math.round(sTarget);
+  });
+  window.addEventListener('keydown', e => {
+    if (e.target && e.target.tagName === 'INPUT') return;   // don't hijack slider keys
+    if (e.code === 'Space' || e.code === 'ArrowRight') { e.preventDefault(); advance(); }
+  });
+
+  /* ─── render loop ───────────────────────────────────────────────────────── */
+
+  function draw() {
+    const now = performance.now();
+    const nowS = now / 1000;
+    const cell = Math.round(P.cell);
+
+    s += (sTarget - s) * P.glide;
+
+    const eraNow = ((Math.round(s) % 3) + 3) % 3;
+    if (eraNow !== shownEra && Math.abs(sTarget - s) < 0.5) { shownEra = eraNow; showLabel(eraNow); }
+
+    const tMod = ((s % 3) + 3) % 3;
+    const e0 = Math.floor(tMod) % 3, e1 = (e0 + 1) % 3, f = tMod - Math.floor(tMod);
+
+    /* polyrhythmic breath — 3 sines, non-integer ratios */
+    const breath = (Math.sin(nowS * 2 * Math.PI / 15.7)
+                  + Math.sin(nowS * 2 * Math.PI / 5.3)
+                  + Math.sin(nowS * 2 * Math.PI / 9.1)) / 3;
+
+    /* boundary-concentrated transition envelope: 4f(1−f) peaks mid-morph */
+    const morphEnv = 4 * f * (1 - f);
+
+    ctx.fillStyle = '#F5F3EE';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(cell * 1.2)}px 'Noto Serif SC', serif`;
+
+    const A = cov[e0], B = cov[e1];
+    const baseAlpha = P.inkAlpha * (1 + P.breath * 0.18 * breath);
+
+    for (let cy = 0; cy < gh; cy++) {
+      for (let cx = 0; cx < gw; cx++) {
+        const idx = cy * gw + cx;
+        const a = A[idx], b = B[idx];
+        const c = a + (b - a) * f;
+        if (c < 0.08) continue;
+
+        /* cells present in both eras stay locked; cells that differ flicker,
+           and only while the morph is actually in motion */
+        const diff = Math.abs(a - b);
+        const flick = P.flicker * morphEnv * diff;
+
+        /* idle life: slow desynchronized swap, per-cell phase from position */
+        const phaseMs  = hash(cx, cy, 99) * P.swapMs;
+        const swapTick = Math.floor((now + phaseMs) / P.swapMs);
+        const swap     = hash(cx, cy, swapTick);
+
+        /* glyph: coverage sets density, a stable per-cell hash varies the
+           interior so solid strokes don't render as one repeated glyph */
+        const base = c * (0.55 + 0.45 * hash(cx, cy, 7));
+        const g = Math.max(0, Math.min(0.999,
+          base + (swap - 0.5) * (P.idleJit * 0.4 + flick)));
+        const glyph = RAMP[Math.floor(g * RAMP.length)];
+
+        const alpha = Math.max(0, Math.min(1, c * baseAlpha * (0.9 + 0.2 * swap)));
+        ctx.fillStyle = `rgba(30,30,28,${alpha.toFixed(3)})`;
+        ctx.fillText(glyph, cx * cell + cell / 2, cy * cell + cell / 2);
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  /* wait for the font so the first frame isn't drawn in a fallback face */
+  buildCoverage();
+  showLabel(0);
+  let started = false;
+  function start() { if (started) return; started = true; requestAnimationFrame(draw); }
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load(`12px 'Noto Serif SC'`).then(start).catch(start);
+    setTimeout(start, 1500);   // fallback if font load stalls
+  } else {
+    start();
+  }
+  </script>
+</body>
+</html>
