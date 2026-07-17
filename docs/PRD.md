@@ -46,7 +46,6 @@ Working and verified in the repo — the PRD builds on, not toward, these:
 |---|---|
 | Etymology trails | Art project with unbounded per-character cost. Prototypes preserved (`etymology-*.html`) — may return post-v1. |
 | Character scene animations | Same: per-character illustration cost doesn't converge. Aesthetic reference stays in CLAUDE.md. |
-| Supabase sync / multi-device | Demo story doesn't need a backend; localStorage is sufficient for one person + one deployed demo. |
 | Shareable read-only graph URLs | Superseded by the deployed demo with curated seed graph. |
 | Semantic field colouring | Not selected for v1 scope. |
 
@@ -89,6 +88,22 @@ Cutting these is what makes v1 finishable. They're parked, not deleted.
 
 ---
 
+## Committed next (v1.1)
+
+Not in v1 — cutting it is what keeps v1 finishable — but a real commitment for the release right after, promoted from a former non-goal once Jen decided the graph is worth keeping beyond a single browser.
+
+### Cross-device sync & durable storage (owner)
+
+Today the graph lives only in one browser's `localStorage`: it's lost on a browser-data wipe and doesn't follow Jen between devices. v1.1 makes Jen's graph durable and portable.
+
+- Jen signs in; her graph persists to a cloud store (e.g. Supabase) so it survives browser-data clears and syncs across her devices.
+- `localStorage` becomes a local/offline cache, not the system of record — on sign-in the cloud copy is authoritative.
+- **Owner-only, by design.** Portfolio visitors keep forking the seed graph into their own `localStorage` with no account — the zero-setup demo story in §4 is unchanged. Sync is Jen's, not a multi-user product.
+
+*Acceptance:* Jen adds characters on one device, opens the site on another (or after clearing browser data), signs in, and her full graph is there — no data loss.
+
+---
+
 ## Prototype track (explore before committing)
 
 Not in v1 scope. Each gets a time-boxed prototype first; graduates to the backlog only if the prototype earns it.
@@ -112,3 +127,4 @@ Not in v1 scope. Each gets a time-boxed prototype first; graduates to the backlo
 - Curated seed graph content: which clusters? (Candidates: 日/月/明/光 light-cluster, 木/林/森 tree-cluster, 水-family, 人-family.) Needs Jen's judgment — it's the demo's narrative.
 - Does the demo need a "reset to seed" affordance more prominent than the current sidebar button?
 - Where do the etymology prototypes live long-term — a `/prototypes` folder, or logged to the creative coding library and removed?
+- Sync (v1.1) mechanism: Supabase vs. alternatives; sign-in method (magic link vs. OAuth); and how to handle conflicts when the same graph is edited on two devices while offline (last-write-wins vs. merge)?
