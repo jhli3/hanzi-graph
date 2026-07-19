@@ -24,22 +24,30 @@ import { useReactFlow } from 'reactflow';
 const LINK_STRENGTH    = 0.08;
 // Rest length of a link (pixels) — nodes settle at roughly this distance apart
 const LINK_DISTANCE    = 180;
-// How strongly unconnected nodes repel — negative = repulsion
-const CHARGE_STRENGTH  = -320;
+// How strongly unconnected nodes repel — negative = repulsion. Bumped
+// slightly (was -320) alongside the wider distance cap below, so there's
+// still real spread between unrelated nodes now that the center force
+// pulling everything inward is much weaker.
+const CHARGE_STRENGTH  = -350;
 // Repulsion stops being applied past this distance — without a cap, two
 // nodes with no shared connections (or in a sparse graph generally) just
 // keep pushing each other apart with nothing to stop them. This is set well
 // past LINK_DISTANCE so connected pairs (~180px apart) are unaffected.
-const CHARGE_MAX_DISTANCE = 450;
+// Widened from 450 — 450 combined with the original 0.03 center strength
+// was pulling everything in too tight.
+const CHARGE_MAX_DISTANCE = 550;
 // Minimum distance between node centres before collision force kicks in
 const COLLIDE_RADIUS   = 60;
 // Gentle pull toward the graph's own center of mass (recomputed every tick,
-// not a fixed canvas point — see centerRef below). This is what actually
-// keeps a sparse or loosely-connected graph from drifting apart over time;
-// the distance cap above just stops runaway repulsion, it doesn't pull
-// anything back together on its own. Deliberately weak so it doesn't fight
-// the link force inside well-connected clusters.
-const CENTER_STRENGTH  = 0.03;
+// not a fixed canvas point — see centerRef below). This is what keeps a
+// sparse or loosely-connected graph from drifting apart over time; the
+// distance cap above just stops runaway repulsion, it doesn't pull
+// anything back together on its own.
+// Was 0.03 — visibly over-corrected into clustering everything too close
+// together. Dropped to a much gentler pull; still measurably reins in an
+// isolated node compared to no center force at all, just doesn't fight
+// the natural spread of a normal-sized graph anymore.
+const CENTER_STRENGTH  = 0.01;
 // 0–1: how quickly the simulation loses energy. Higher = snappier settle.
 const VELOCITY_DECAY   = 0.55;
 
