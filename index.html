@@ -6,8 +6,13 @@
     <title>字图 · Hanzi Graph</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Noto Serif SC is self-hosted (see src/main.jsx) — Google's CDN
+         chunks large CJK families by unicode range and fetches each range
+         lazily, which was the source of the character-font inconsistency
+         in the Add Character modal. Latin/UI fonts stay on Google Fonts,
+         they don't have that per-glyph race. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0&display=swap"
       rel="stylesheet"
     />
   </head>

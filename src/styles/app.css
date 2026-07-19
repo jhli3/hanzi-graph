@@ -1,5 +1,29 @@
-/* ─── Fonts ────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Fraunces:ital,wght@0,300;1,300&display=swap');
+/* ─── Fonts ────────────────────────────────────────────────────────────────────
+   DM Mono, Fraunces, and Material Symbols Outlined load via <link> in
+   index.html. Noto Serif SC is self-hosted instead (see src/main.jsx) —
+   Google's CDN splits large CJK families into many unicode-range-scoped
+   files and fetches each lazily on first use, so a character that hadn't
+   appeared yet would briefly render in a fallback sans font while its
+   chunk downloaded. That was the real cause of the character-font
+   inconsistency in the Add Character modal's search results. */
+
+/* Material Symbols — standard Google boilerplate for the icon font */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+}
 
 /* ─── Design tokens ─────────────────────────────────────────────────────────── */
 :root {
@@ -30,8 +54,11 @@
   --node-radical-bg: #2C2C2A;
   --node-radical-text: #F1EFE8;
 
-  /* Edges */
-  --edge-color:      #A8A5A0;
+  /* Edges — #A8A5A0 was 2.2:1 against the canvas, failing legibility even
+     before counting hover/selected states. These three sit at 3.1 / 5.3 / 15:1. */
+  --edge-color:      #8C8983;
+  --edge-hover:      #67645F;
+  --edge-selected:   #1E1E1C;
 
   /* Panel */
   --panel-width:     248px;
@@ -41,7 +68,16 @@
 
   /* Fonts */
   --font-sans:  system-ui, -apple-system, sans-serif;
-  --font-serif: 'Noto Serif SC', serif;
+  /* Noto Serif SC (self-hosted) only covers ~7,900 common-use glyphs — CC-CEDICT
+     reaches well past that (e.g. 涷, 鶇 aren't in any build of it, static or
+     variable). When a character falls outside that set, the browser does
+     per-glyph fallback to the next font in this list — without an explicit
+     serif CJK font here, that lands on generic 'serif' (no CJK glyphs),
+     which macOS then fills in with its sans default (PingFang SC), which is
+     exactly the "sometimes sans" bug. Songti SC/STSong (macOS) and
+     SimSun/NSimSun (Windows) are the OS's own serif CJK fonts and have much
+     broader native coverage, so gaps fall through to a serif face instead. */
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', 'NSimSun', serif;
   --font-mono:  'DM Mono', monospace;
   --font-body:  'Fraunces', serif;
 
@@ -62,49 +98,22 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
 }
 
-/* ─── Sidebar ────────────────────────────────────────────────────────────────── */
-.sidebar {
-  width: 52px;
-  flex-shrink: 0;
-  background: var(--surface);
-  border-right: 0.5px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 0;
-  gap: 4px;
-  z-index: 20;
-}
-
-.sidebar__logo {
+/* ─── Brand mark ─────────────────────────────────────────────────────────────── */
+.brand-mark {
+  position: absolute;
+  top: 14px;
+  left: 16px;
   font-family: var(--font-serif);
-  font-size: 22px;
-  color: var(--text-primary);
-  margin-bottom: 14px;
-  line-height: 1;
-  user-select: none;
-}
-
-.sidebar__btn {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-md);
-  border: none;
-  background: transparent;
+  font-size: 15px;
+  letter-spacing: 0.04em;
   color: var(--text-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 18px;
-  transition: background 0.13s, color 0.13s;
+  z-index: 10;
+  user-select: none;
+  pointer-events: none;
 }
-.sidebar__btn:hover               { background: var(--surface-muted); color: var(--text-primary); }
-.sidebar__btn--active             { background: var(--surface-muted); color: var(--text-primary); }
-.sidebar__btn--danger:hover       { background: #FAECE7; color: #993C1D; }
-.sidebar__spacer                  { flex: 1; }
 
 /* ─── Canvas ─────────────────────────────────────────────────────────────────── */
 .canvas-wrap {
@@ -118,42 +127,80 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 .react-flow__renderer { background: transparent !important; }
 .react-flow__pane     { cursor: default !important; }
 
-/* ─── Canvas toolbar ─────────────────────────────────────────────────────────── */
-.canvas-toolbar {
+/* ─── Bottom nav ─────────────────────────────────────────────────────────────
+   Two separate elements: a tool-group pill (Explore/pan · Connect, plus the
+   component·semantic sub-choice when Connect is active) and, apart from it,
+   a standalone Add character text button. Reset lives in git history — it's
+   hidden for now since Jen doesn't use it in her own workflow. */
+.bottom-nav {
   position: absolute;
-  top: 14px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  z-index: 10;
+}
+
+.bottom-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   background: var(--surface);
   border: 0.5px solid var(--border);
   border-radius: 999px;
-  padding: 5px 12px;
-  z-index: 10;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  padding: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
 
-.canvas-toolbar__label {
+.bottom-nav__add-btn {
+  height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 12px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-tertiary);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0 6px 0 2px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
+.bottom-nav__add-btn:hover { background: var(--text-primary); color: var(--surface); }
 
-.canvas-toolbar__divider {
+.bottom-toolbar__divider {
   width: 0.5px;
-  height: 16px;
+  height: 22px;
   background: var(--border);
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
-.toolbar-btn {
-  height: 26px;
-  padding: 0 10px;
+.bottom-toolbar__btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.bottom-toolbar__btn:hover     { background: var(--surface-muted); color: var(--text-primary); }
+.bottom-toolbar__btn--active   { background: var(--surface-dark); color: #F1EFE8; }
+.bottom-toolbar__btn--active:hover { background: var(--surface-dark); color: #F1EFE8; }
+
+.bottom-toolbar__chip {
+  height: 30px;
+  padding: 0 12px;
   border-radius: 999px;
   border: none;
   background: transparent;
@@ -164,35 +211,15 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
-.toolbar-btn:hover       { background: var(--surface-muted); color: var(--text-primary); }
-.toolbar-btn--active     { background: var(--surface-muted); color: var(--text-primary); }
-
-/* ─── Add button ─────────────────────────────────────────────────────────────── */
-.add-btn {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 0.5px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  z-index: 10;
-  transition: background 0.12s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.add-btn:hover { background: var(--text-primary); color: var(--surface); }
+.bottom-toolbar__chip:hover     { background: var(--surface-muted); color: var(--text-primary); }
+.bottom-toolbar__chip--active   { background: var(--surface-muted); color: var(--text-primary); font-weight: 500; }
 
 /* ─── Connect hint ───────────────────────────────────────────────────────────── */
 .connect-hint {
   position: absolute;
-  bottom: 60px;
+  bottom: 84px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--surface-dark);
@@ -564,6 +591,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 .hanzi-node {
   width: 80px;
   height: 80px;
+  padding: 0 6px;
   border-radius: var(--r-md);
   background: var(--node-bg);
   border: 0.5px solid var(--node-border);
@@ -592,29 +620,46 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 
 .hanzi-node__char {
   font-family: var(--font-serif);
-  font-size: 28px;
+  /* font-size set inline per-node (see charFontSize in HanziNode.jsx) so
+     longer phrases shrink to fit the fixed 80x80 node instead of overflowing */
   line-height: 1;
   color: var(--text-primary);
   margin-bottom: 3px;
+  max-width: 100%;
 }
 .hanzi-node--radical .hanzi-node__char { color: var(--node-radical-text); }
 
+/* Pinyin/meaning aren't font-scaled like the character is — instead they
+   clip with an ellipsis so a long phrase's romanization can't blow out the
+   fixed node size either */
 .hanzi-node__pinyin {
   font-family: var(--font-mono);
   font-size: 9px;
-  color: var(--text-tertiary);
+  /* was --text-tertiary (#888780, 3.6:1 on white) — tightened for AA */
+  color: #5F5E5A;
   letter-spacing: 0.04em;
   line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.hanzi-node--radical .hanzi-node__pinyin { color: #6B6B68; }
+/* was #6B6B68 (2.6:1 on the radical bg) */
+.hanzi-node--radical .hanzi-node__pinyin { color: #B8B6AE; }
 
 .hanzi-node__meaning {
   font-size: 8px;
-  color: var(--text-ghost);
+  /* was --text-ghost (#B4B2A9, 2.1:1 on white) */
+  color: #767570;
   line-height: 1;
   margin-top: 1px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.hanzi-node--radical .hanzi-node__meaning { color: #4A4A47; }
+/* was #4A4A47 (1.6:1 on the radical bg — effectively invisible) */
+.hanzi-node--radical .hanzi-node__meaning { color: #9C9A93; }
 
 /* React Flow handle dots — subtle */
 .hanzi-handle {
@@ -643,6 +688,22 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 }
 .edge-label--semantic { font-style: italic; }
 
+/* Hover/selected edge states — the inline stroke color set in HanziEdges.jsx
+   only covers the resting state, so React Flow's own .selected class (and
+   native :hover) had nothing to draw on before. !important is required here
+   specifically to win over that inline style. */
+.react-flow__edge-path {
+  transition: stroke 0.12s, stroke-width 0.12s;
+}
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--edge-hover) !important;
+  stroke-width: 2.5px !important;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--edge-selected) !important;
+  stroke-width: 2.5px !important;
+}
+
 /* ─── Modal ──────────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
@@ -655,22 +716,34 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   backdrop-filter: blur(2px);
 }
 
+/* Fixed footprint regardless of which stage/mode is showing — the search
+   grid, the confirm form, and the manual form all differ a lot in content
+   height, so the frame holds still and the body scrolls internally instead. */
 .modal {
   width: 400px;
-  max-height: 90vh;
+  height: min(620px, 86vh);
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border-radius: var(--r-xl);
   border: 0.5px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: 0 8px 32px rgba(0,0,0,0.16);
 }
 
 .modal__header {
+  flex-shrink: 0;
   padding: 20px 20px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+
+.modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .modal__title {
   font-family: var(--font-mono);
@@ -684,46 +757,91 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   width: 28px; height: 28px;
   border: none; background: transparent;
   color: var(--text-ghost);
-  cursor: pointer; font-size: 12px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
   border-radius: var(--r-sm);
   transition: background 0.12s;
 }
 .modal__close:hover { background: var(--surface-muted); color: var(--text-primary); }
+.modal__close .material-symbols-outlined { font-size: 17px; }
+
+/* ── Mode tabs — "Search dictionary" vs "Create manually" ────────────────── */
+.modal__mode-tabs {
+  display: flex;
+  gap: 3px;
+  margin: 0 20px 14px;
+  padding: 3px;
+  background: var(--surface-muted);
+  border-radius: var(--r-md);
+  flex-shrink: 0;
+}
+.modal__mode-tab {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: calc(var(--r-md) - 3px);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.modal__mode-tab:hover { color: var(--text-primary); }
+.modal__mode-tab--active {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
 
 .modal__form { padding: 0 20px 20px; }
 
+/* Stacked (char box full-width, meta below) rather than side-by-side — a
+   fixed 80x80 square box next to a meta column couldn't fit anything past
+   a single character. Full-width comfortably fits phrases like 东西. */
 .modal__char-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 20px;
 }
 .modal__char-input-wrap {
-  width: 80px; height: 80px;
+  width: 100%;
+  min-height: 76px;
+  padding: 10px 16px;
   border: 1.5px solid var(--border-strong);
   border-radius: var(--r-lg);
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-muted);
-  flex-shrink: 0;
 }
+/* Editable char field, used in manual-entry mode. Explicit font-serif so it
+   always matches the read-only confirm-stage display (.modal__char-display)
+   regardless of what the input would otherwise inherit. */
 .modal__char-input {
-  width: 60px; height: 60px;
+  width: 100%; height: 100%;
   border: none; background: transparent;
   font-family: var(--font-serif);
-  font-size: 44px;
+  font-size: 40px;
   text-align: center;
   color: var(--text-primary);
   outline: none;
 }
+.modal__char-input::placeholder { color: var(--text-ghost); }
 .modal__autofill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: #3B6D11;
   background: #EAF3DE;
-  padding: 3px 8px;
+  padding: 3px 8px 3px 6px;
   border-radius: 999px;
   letter-spacing: 0.04em;
+  width: fit-content;
 }
+.modal__autofill-badge .material-symbols-outlined { font-size: 12px; }
 
 .modal__fields {
   display: grid;
@@ -781,6 +899,24 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   color: #993C1D;
   margin-bottom: 12px;
 }
+
+/* Duplicate-entry notice — informational, not blocking (submit still asks
+   to confirm via a native dialog), so it gets its own amber tone rather
+   than reusing the red .modal__error styling */
+.modal__duplicate-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: #7A5B12;
+  background: #FBF1D9;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  margin-bottom: 16px;
+}
+.modal__duplicate-warning .material-symbols-outlined { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
 
 .modal__actions {
   display: flex; justify-content: flex-end; gap: 8px;
@@ -842,15 +978,16 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 .modal__back {
   border: none;
   background: transparent;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  display: flex;
+  align-items: center;
   color: var(--text-tertiary);
-  letter-spacing: 0.06em;
   cursor: pointer;
-  padding: 0;
-  transition: color 0.12s;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  transition: color 0.12s, background 0.12s;
 }
-.modal__back:hover { color: var(--text-primary); }
+.modal__back:hover { color: var(--text-primary); background: var(--surface-muted); }
+.modal__back .material-symbols-outlined { font-size: 18px; }
 
 .modal__search-stage {
   padding: 0 20px 20px;
@@ -872,7 +1009,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   background: var(--surface);
 }
 
-.modal__search-icon { font-size: 13px; opacity: 0.4; flex-shrink: 0; }
+.modal__search-icon { font-size: 17px; opacity: 0.45; flex-shrink: 0; color: var(--text-tertiary); }
 
 .modal__search-input {
   flex: 1;
@@ -890,11 +1027,13 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 
 .modal__search-clear {
   border: none; background: transparent;
-  color: var(--text-ghost); font-size: 11px;
+  display: flex; align-items: center;
+  color: var(--text-ghost);
   cursor: pointer; padding: 0; flex-shrink: 0;
   transition: color 0.12s;
 }
 .modal__search-clear:hover { color: var(--text-primary); }
+.modal__search-clear .material-symbols-outlined { font-size: 15px; }
 
 /* Results grid */
 .modal__results-grid {
@@ -906,7 +1045,27 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   padding-right: 2px;
 }
 
+/* Compact variant used for the inline autofill search inside manual-entry
+   mode, where the field set below still needs most of the modal's height */
+.modal__results-grid--compact {
+  max-height: 140px;
+}
+
+.modal__manual-search {
+  margin-bottom: 16px;
+}
+.modal__manual-search-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-ghost);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: block;
+}
+
 .modal__result-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -924,6 +1083,20 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   border-color: var(--border-strong);
   background: var(--surface);
   transform: translateY(-1px);
+}
+
+/* Already-on-the-canvas marker — doesn't block picking it again, just
+   flags it before you commit to a duplicate */
+.modal__result-card--added { border-color: rgba(59,109,17,0.25); }
+.result-card__added-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 13px !important;
+  color: #3B6D11;
+  background: var(--surface);
+  border-radius: 50%;
+  line-height: 1;
 }
 
 .result-card__char {
@@ -963,6 +1136,26 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   line-height: 1.7;
 }
 .modal__search-hint em { color: var(--text-tertiary); font-style: normal; }
+.modal__search-hint--footnote {
+  padding: 10px 0 0;
+  font-style: normal;
+  border-top: 0.5px solid var(--border);
+  margin-top: 10px;
+}
+.modal__link-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.12s;
+}
+.modal__link-btn:hover { color: var(--text-primary); }
 
 /* Confirm stage tweaks */
 .modal__char-input-wrap--selected {
@@ -980,21 +1173,11 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   display: flex;
   flex-direction: column;
   gap: 4px;
-  justify-content: center;
 }
 .modal__selected-hint {
   font-size: 10px;
   color: var(--text-ghost);
   font-family: var(--font-mono);
   letter-spacing: 0.03em;
-}
-
-/* Physics active indicator — gentle pulse on the toolbar button */
-.toolbar-btn--active[title="Toggle node physics"] {
-  animation: physics-pulse 2.5s ease-in-out infinite;
-}
-
-@keyframes physics-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
+  line-height: 1.5;
 }

@@ -134,16 +134,21 @@ export default function DetailPanel() {
         )}
       </section>
 
-      {/* Stroke order */}
-      <section className="detail-panel__section">
-        <div className="detail-panel__section-label">
-          stroke order
-          {strokes != null && (
-            <span className="detail-panel__section-meta">{strokes} strokes</span>
-          )}
-        </div>
-        <StrokeOrderWriter char={char} />
-      </section>
+      {/* Stroke order — Hanzi Writer only animates one character at a time,
+          so this is dropped for multi-character entries for now rather than
+          showing something misleading (e.g. just the first character's
+          strokes). Revisit if a per-character tab/carousel is worth it. */}
+      {[...char].length === 1 && (
+        <section className="detail-panel__section">
+          <div className="detail-panel__section-label">
+            stroke order
+            {strokes != null && (
+              <span className="detail-panel__section-meta">{strokes} strokes</span>
+            )}
+          </div>
+          <StrokeOrderWriter char={char} />
+        </section>
+      )}
 
       {/* Audio */}
       <section className="detail-panel__section">

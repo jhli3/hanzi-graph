@@ -47,29 +47,27 @@ function GraphApp() {
   const setEdgeMode    = useGraphStore(s => s.setEdgeMode);
   const clearSelection = useGraphStore(s => s.clearSelection);
   const selectedNodeId = useGraphStore(s => s.selectedNodeId);
-  const resetToSeed    = useGraphStore(s => s.resetToSeed);
 
-  const [showModal, setShowModal]           = useState(false);
-  const [physicsEnabled, setPhysicsEnabled] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-  // ── Step 3: force layout hook ──────────────────────────────────────────
+  // ── Force layout — always on, nothing to anchor. Dragging a node just
+  // fixes it while you hold it; it rejoins the simulation on drop. ────────
   const {
-    reheat,
+    syncTopology,
     onNodeDragStart,
     onNodeDrag,
     onNodeDragStop,
-    onNodeDoubleClick,
-  } = useForceLayout(physicsEnabled);
+  } = useForceLayout();
 
-  // ── Step 4: reheat when nodes or edges are added/removed ──────────────
+  // ── Reconcile the simulation whenever nodes or edges are added/removed ──
   const prevCountRef = useRef(nodes.length + edges.length);
   useEffect(() => {
     const count = nodes.length + edges.length;
     if (count !== prevCountRef.current) {
       prevCountRef.current = count;
-      reheat();
+      syncTopology();
     }
-  }, [nodes.length, edges.length, reheat]);
+  }, [nodes.length, edges.length, syncTopology]);
 
   const handlePaneClick = useCallback(() => {
     clearSelection();
@@ -79,87 +77,10 @@ function GraphApp() {
     <div className="app-shell">
       <ArrowMarkers />
 
-      {/* ── Sidebar ─────────────────────────────────────────────────── */}
-      <nav className="sidebar" aria-label="Main navigation">
-        <div className="sidebar__logo" title="Hanzi Graph">字</div>
-        <button
-          className={`sidebar__btn ${toolMode === 'select' ? 'sidebar__btn--active' : ''}`}
-          onClick={() => setToolMode('select')}
-          title="Select mode"
-        >
-          ◻
-        </button>
-        <button
-          className={`sidebar__btn ${toolMode === 'connect' ? 'sidebar__btn--active' : ''}`}
-          onClick={() => setToolMode('connect')}
-          title="Connect mode — drag between nodes to create edges"
-        >
-          ⌁
-        </button>
-        <div className="sidebar__spacer" />
-        <button
-          className="sidebar__btn sidebar__btn--danger"
-          onClick={() => { if (confirm('Reset graph to seed data?')) resetToSeed(); }}
-          title="Reset graph"
-        >
-          ↺
-        </button>
-      </nav>
+      <div className="brand-mark">字图</div>
 
       {/* ── Canvas ──────────────────────────────────────────────────── */}
       <div className="canvas-wrap">
-
-        {/* Toolbar */}
-        <div className="canvas-toolbar">
-          <span className="canvas-toolbar__label">hanzi graph</span>
-          <div className="canvas-toolbar__divider" />
-
-          <button
-            className={`toolbar-btn ${toolMode === 'select' ? 'toolbar-btn--active' : ''}`}
-            onClick={() => setToolMode('select')}
-            title="Select"
-          >
-            select
-          </button>
-          <button
-            className={`toolbar-btn ${toolMode === 'connect' ? 'toolbar-btn--active' : ''}`}
-            onClick={() => setToolMode('connect')}
-            title="Draw edges — drag from node to node"
-          >
-            connect
-          </button>
-
-          <div className="canvas-toolbar__divider" />
-
-          <button
-            className={`toolbar-btn ${edgeMode === 'component' ? 'toolbar-btn--active' : ''}`}
-            onClick={() => setEdgeMode('component')}
-            title="Next edge will be: component"
-          >
-            — component
-          </button>
-          <button
-            className={`toolbar-btn ${edgeMode === 'semantic' ? 'toolbar-btn--active' : ''}`}
-            onClick={() => setEdgeMode('semantic')}
-            title="Next edge will be: semantic"
-          >
-            ⋯ semantic
-          </button>
-
-          <div className="canvas-toolbar__divider" />
-          <button
-            className={`toolbar-btn ${physicsEnabled ? 'toolbar-btn--active' : ''}`}
-            onClick={() => setPhysicsEnabled(v => !v)}
-            title="Toggle node physics"
-          >
-            {physicsEnabled ? '⦿ physics on' : '◎ physics off'}
-          </button>
-        </div>
-
-        {/* Add button */}
-        <button className="add-btn" onClick={() => setShowModal(true)}>
-          + Add character
-        </button>
 
         {/* React Flow canvas */}
         <ReactFlow
@@ -176,9 +97,9 @@ function GraphApp() {
           onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
-          onNodeDoubleClick={onNodeDoubleClick}
           fitView
           fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.05}
           proOptions={{ hideAttribution: true }}
         >
           <Background
@@ -201,6 +122,52 @@ function GraphApp() {
             Drag from any node handle to another to draw a <strong>{edgeMode}</strong> edge
           </div>
         )}
+
+        {/* ── Bottom nav — tool group + separate Add character button ───── */}
+        <div className="bottom-nav">
+          <div className="bottom-toolbar" role="toolbar" aria-label="Canvas tools">
+            <button
+              className={`bottom-toolbar__btn ${toolMode === 'select' ? 'bottom-toolbar__btn--active' : ''}`}
+              onClick={() => setToolMode('select')}
+              title="Explore"
+            >
+              <span className="material-symbols-outlined">pan_tool</span>
+            </button>
+            <button
+              className={`bottom-toolbar__btn ${toolMode === 'connect' ? 'bottom-toolbar__btn--active' : ''}`}
+              onClick={() => setToolMode('connect')}
+              title="Connect — drag between characters to draw an edge"
+            >
+              <span className="material-symbols-outlined">polyline</span>
+            </button>
+
+            {toolMode === 'connect' && (
+              <>
+                <div className="bottom-toolbar__divider" />
+                <button
+                  className={`bottom-toolbar__chip ${edgeMode === 'component' ? 'bottom-toolbar__chip--active' : ''}`}
+                  onClick={() => setEdgeMode('component')}
+                  title="Next edge will be: component (solid)"
+                >
+                  component
+                </button>
+                <button
+                  className={`bottom-toolbar__chip ${edgeMode === 'semantic' ? 'bottom-toolbar__chip--active' : ''}`}
+                  onClick={() => setEdgeMode('semantic')}
+                  title="Next edge will be: semantic (dashed)"
+                >
+                  semantic
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Reset is hidden for now — not part of Jen's own personal workflow.
+              Still in git history (App.jsx, pre this change) if it's wanted back. */}
+          <button className="bottom-nav__add-btn" onClick={() => setShowModal(true)}>
+            + Add character
+          </button>
+        </div>
       </div>
 
       {/* ── Detail panel ─────────────────────────────────────────────── */}

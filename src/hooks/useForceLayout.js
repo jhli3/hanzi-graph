@@ -1,7 +1,10 @@
 // src/hooks/useForceLayout.js
 //
-// Wires d3-force into React Flow.
-// Import and call this inside your GraphApp component.
+// Wires d3-force into React Flow. Physics runs continuously — there is no
+// on/off toggle anymore, and nodes are never permanently pinned. Dragging a
+// node fixes it only for the duration of the drag (so it tracks the cursor
+// exactly); on drop it rejoins the simulation so bundles keep forming
+// naturally as characters and connections are added.
 //
 // Requires d3-force — install it if you haven't:
 //   npm install d3-force
@@ -12,9 +15,10 @@ import {
   forceLink,
   forceManyBody,
   forceCollide,
+  forceX,
+  forceY,
 } from 'd3-force';
 import { useReactFlow } from 'reactflow';
-import { useGraphStore } from './useGraphStore';
 
 // How strongly connected nodes attract each other
 const LINK_STRENGTH    = 0.08;
@@ -22,130 +26,136 @@ const LINK_STRENGTH    = 0.08;
 const LINK_DISTANCE    = 180;
 // How strongly unconnected nodes repel — negative = repulsion
 const CHARGE_STRENGTH  = -320;
+// Repulsion stops being applied past this distance — without a cap, two
+// nodes with no shared connections (or in a sparse graph generally) just
+// keep pushing each other apart with nothing to stop them. This is set well
+// past LINK_DISTANCE so connected pairs (~180px apart) are unaffected.
+const CHARGE_MAX_DISTANCE = 450;
 // Minimum distance between node centres before collision force kicks in
 const COLLIDE_RADIUS   = 60;
+// Gentle pull toward the graph's own center of mass (recomputed every tick,
+// not a fixed canvas point — see centerRef below). This is what actually
+// keeps a sparse or loosely-connected graph from drifting apart over time;
+// the distance cap above just stops runaway repulsion, it doesn't pull
+// anything back together on its own. Deliberately weak so it doesn't fight
+// the link force inside well-connected clusters.
+const CENTER_STRENGTH  = 0.03;
 // 0–1: how quickly the simulation loses energy. Higher = snappier settle.
 const VELOCITY_DECAY   = 0.55;
 
-export function useForceLayout(enabled) {
+export function useForceLayout() {
   const { setNodes, getNodes, getEdges } = useReactFlow();
   const simulationRef = useRef(null);
-  const nodesRef      = useRef([]);   // d3 mutates these in place
-  const pinnedRef     = useRef(new Set()); // ids of user-pinned nodes
+  const dNodeById      = useRef(new Map()); // id -> d3 node object (mutated in place by d3)
+  // Center of mass of the current graph — read by the forceX/forceY center
+  // force below, recomputed each tick. A moving target rather than a fixed
+  // canvas point, so it doesn't fight you if you've dragged the whole
+  // cluster somewhere else; it just tracks wherever "the graph" currently is.
+  const centerRef = useRef({ x: 400, y: 280 });
 
-  // ── Build / rebuild simulation whenever enabled toggles on ──────────────
-  useEffect(() => {
-    if (!enabled) {
-      // Stop and discard the simulation when physics is turned off
-      simulationRef.current?.stop();
-      simulationRef.current = null;
-      return;
+  const tick = useCallback(() => {
+    const dNodes = dNodeById.current;
+    if (dNodes.size > 0) {
+      let sx = 0, sy = 0;
+      for (const d of dNodes.values()) { sx += d.x; sy += d.y; }
+      centerRef.current = { x: sx / dNodes.size, y: sy / dNodes.size };
     }
+    setNodes(prev => prev.map(n => {
+      const d = dNodeById.current.get(n.id);
+      if (!d) return n;
+      return { ...n, position: { x: d.x - 40, y: d.y - 40 } };
+    }));
+  }, [setNodes]);
+
+  // Reconcile the simulation's node/link set with React Flow's current
+  // nodes/edges. Existing nodes keep their settled d3 position (so this can
+  // be called on every add/remove without the whole graph jumping); new
+  // nodes are seeded at the position they were created with.
+  const syncTopology = useCallback(() => {
+    const sim = simulationRef.current;
+    if (!sim) return;
 
     const rfNodes = getNodes();
     const rfEdges = getEdges();
 
-    // Copy positions into d3 node objects.
-    // d3 mutates these directly on each tick.
-    nodesRef.current = rfNodes.map(n => ({
-      id:  n.id,
-      x:   n.position.x + 40,  // centre of 80px node
-      y:   n.position.y + 40,
-      fx:  pinnedRef.current.has(n.id) ? n.position.x + 40 : null,
-      fy:  pinnedRef.current.has(n.id) ? n.position.y + 40 : null,
-    }));
-
-    const idToIndex = new Map(nodesRef.current.map((n, i) => [n.id, i]));
-
-    const links = rfEdges
-      .map(e => ({
-        source: idToIndex.get(e.source),
-        target: idToIndex.get(e.target),
-      }))
-      .filter(l => l.source !== undefined && l.target !== undefined);
-
-    const sim = forceSimulation(nodesRef.current)
-      .velocityDecay(VELOCITY_DECAY)
-      .force('link', forceLink(links)
-        .distance(LINK_DISTANCE)
-        .strength(LINK_STRENGTH)
-      )
-      .force('charge', forceManyBody()
-        .strength(CHARGE_STRENGTH)
-      )
-      .force('collide', forceCollide(COLLIDE_RADIUS))
-      .on('tick', () => {
-        setNodes(prev => prev.map(n => {
-          const d = nodesRef.current[idToIndex.get(n.id)];
-          if (!d) return n;
-          return {
-            ...n,
-            position: { x: d.x - 40, y: d.y - 40 },
-          };
-        }));
+    const next = new Map();
+    for (const n of rfNodes) {
+      const existing = dNodeById.current.get(n.id);
+      next.set(n.id, existing ?? {
+        id: n.id,
+        x: n.position.x + 40, // centre of 80px node
+        y: n.position.y + 40,
+        fx: null,
+        fy: null,
       });
+    }
+    dNodeById.current = next;
+
+    const nodeArr = Array.from(next.values());
+    sim.nodes(nodeArr);
+    sim.force('link').links(
+      rfEdges
+        .filter(e => next.has(e.source) && next.has(e.target))
+        .map(e => ({ source: e.source, target: e.target }))
+    );
+    sim.alpha(0.4).restart();
+  }, [getNodes, getEdges]);
+
+  // ── Build the simulation once and keep it alive for the component's
+  // lifetime — syncTopology() reconciles it as the graph changes, rather
+  // than tearing it down (which would lose everyone's settled position).
+  useEffect(() => {
+    const sim = forceSimulation([])
+      .velocityDecay(VELOCITY_DECAY)
+      .force('link', forceLink([]).id(d => d.id).distance(LINK_DISTANCE).strength(LINK_STRENGTH))
+      .force('charge', forceManyBody().strength(CHARGE_STRENGTH).distanceMax(CHARGE_MAX_DISTANCE))
+      .force('collide', forceCollide(COLLIDE_RADIUS))
+      .force('x', forceX(() => centerRef.current.x).strength(CENTER_STRENGTH))
+      .force('y', forceY(() => centerRef.current.y).strength(CENTER_STRENGTH))
+      .on('tick', tick);
 
     simulationRef.current = sim;
+    syncTopology();
 
-    return () => { sim.stop(); };
-  // Rebuild only when enabled changes — edge/node changes handled separately
+    return () => {
+      sim.stop();
+      simulationRef.current = null;
+    };
+  // Build once on mount — syncTopology is stable via useCallback and is
+  // called explicitly (not through this effect) whenever the graph changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
-
-  // ── Reheat when graph topology changes (nodes/edges added or removed) ──
-  const reheat = useCallback(() => {
-    simulationRef.current?.alpha(0.4).restart();
   }, []);
 
-  // ── Pin a node when the user starts dragging it ───────────────────────
+  // ── Pin a node when the user starts dragging it — tracks the cursor exactly ──
   const onNodeDragStart = useCallback((_, node) => {
-    if (!simulationRef.current) return;
-    pinnedRef.current.add(node.id);
-    const d = nodesRef.current.find(n => n.id === node.id);
-    if (d) {
-      d.fx = node.position.x + 40;
-      d.fy = node.position.y + 40;
-    }
-    // Gentle reheat so neighbours respond to the drag
+    const d = dNodeById.current.get(node.id);
+    if (!d || !simulationRef.current) return;
+    d.fx = node.position.x + 40;
+    d.fy = node.position.y + 40;
     simulationRef.current.alpha(0.3).restart();
   }, []);
 
   // ── Track drag — update pinned position every frame ───────────────────
   const onNodeDrag = useCallback((_, node) => {
-    if (!simulationRef.current) return;
-    const d = nodesRef.current.find(n => n.id === node.id);
-    if (d) {
-      d.fx = node.position.x + 40;
-      d.fy = node.position.y + 40;
-    }
+    const d = dNodeById.current.get(node.id);
+    if (!d) return;
+    d.fx = node.position.x + 40;
+    d.fy = node.position.y + 40;
   }, []);
 
-  // ── Release: keep node pinned so it stays where you dropped it ────────
-  // (matches Obsidian behaviour — nodes don't drift after placing)
+  // ── Release on drop — node rejoins the simulation instead of staying put ──
   const onNodeDragStop = useCallback((_, node) => {
-    if (!simulationRef.current) return;
-    const d = nodesRef.current.find(n => n.id === node.id);
-    if (d) {
-      d.fx = node.position.x + 40;
-      d.fy = node.position.y + 40;
-    }
-    simulationRef.current.alpha(0.15).restart();
-  }, []);
-
-  // ── Unpin a node with double-click so it flows freely again ──────────
-  const onNodeDoubleClick = useCallback((_, node) => {
-    if (!simulationRef.current) return;
-    pinnedRef.current.delete(node.id);
-    const d = nodesRef.current.find(n => n.id === node.id);
-    if (d) { d.fx = null; d.fy = null; }
+    const d = dNodeById.current.get(node.id);
+    if (!d || !simulationRef.current) return;
+    d.fx = null;
+    d.fy = null;
     simulationRef.current.alpha(0.3).restart();
   }, []);
 
   return {
-    reheat,
+    syncTopology,
     onNodeDragStart,
     onNodeDrag,
     onNodeDragStop,
-    onNodeDoubleClick,
   };
 }

@@ -2,8 +2,22 @@ import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useGraphStore } from '../hooks/useGraphStore';
 
-// Tone marks for display
-const TONE_COLORS = ['', '#c0392b', '#27ae60', '#e67e22', '#2980b9'];
+// The node stays a fixed 80x80 regardless of content — longer phrases (东西
+// and up) shrink to fit instead. CJK characters are roughly monospace/square,
+// so a length-based estimate works without needing to actually measure
+// rendered text: ~68px of usable width inside the node's padding, divided
+// across however many characters there are, capped at the single-character
+// size on one end and a readable floor on the other.
+const CHAR_FONT_SIZE_MAX = 28;
+const CHAR_FONT_SIZE_MIN = 11;
+const CHAR_ROW_USABLE_WIDTH = 68;
+
+function charFontSize(char) {
+  const len = [...(char || '')].length;
+  if (len <= 1) return CHAR_FONT_SIZE_MAX;
+  const fit = Math.floor(CHAR_ROW_USABLE_WIDTH / len);
+  return Math.max(CHAR_FONT_SIZE_MIN, Math.min(CHAR_FONT_SIZE_MAX, fit));
+}
 
 function HanziNode({ id, data, selected }) {
   const selectNode = useGraphStore(s => s.selectNode);
@@ -25,7 +39,7 @@ function HanziNode({ id, data, selected }) {
       <Handle type="source" position={Position.Bottom} className="hanzi-handle" />
       <Handle type="source" position={Position.Right}  className="hanzi-handle" />
 
-      <span className="hanzi-node__char">{char}</span>
+      <span className="hanzi-node__char" style={{ fontSize: charFontSize(char) }}>{char}</span>
       <span className="hanzi-node__pinyin">{pinyin}</span>
       <span className="hanzi-node__meaning">{meaning.split(',')[0]}</span>
     </div>

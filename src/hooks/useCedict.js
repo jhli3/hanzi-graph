@@ -28,11 +28,31 @@ function buildPinyinIndex(dict) {
     if (!index.has(key)) index.set(key, []);
     index.get(key).push(entry);
   }
-
-  // TEMP DEBUG — remove after
-  console.log('yu index entries:', index.get('yu')?.map(e => e.simplified));
-  console.log('鱼 in dict:', dict.get('鱼'));
   return index;
+}
+
+// Escape a string for safe use inside a RegExp
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Score how well an entry's meanings match a set of free-text definition
+// terms — used to disambiguate homophones (e.g. "yu fish" → 鱼 over 渔/余).
+// A whole-word match counts more than a bare substring, and a match in the
+// entry's first (most common) sense counts more than one further down.
+function scoreMeanings(entry, terms) {
+  let score = 0;
+  entry.meanings.forEach((meaning, idx) => {
+    const lower = meaning.toLowerCase();
+    const positionWeight = idx === 0 ? 1.5 : 1;
+    for (const term of terms) {
+      if (!term) continue;
+      const boundary = new RegExp(`\\b${escapeRegExp(term)}\\b`);
+      if (boundary.test(lower)) score += 2 * positionWeight;
+      else if (lower.includes(term)) score += 1 * positionWeight;
+    }
+  });
+  return score;
 }
 
 async function loadDict() {
@@ -75,20 +95,39 @@ export function useCedict() {
     return chars.map(char => ({ char, entry: lookup(char) }));
   }, [lookup]);
 
+  // Smart search: first word is always the pinyin key (bare syllable,
+  // tones optional — unchanged from before). Any words after that are
+  // treated as definition keywords, e.g. "yu fish" narrows the "yu"
+  // homophones down to the fish-shaped one. If none of the candidates'
+  // meanings match the definition terms, we fall back to the full pinyin
+  // list rather than going empty — better a loose result than none.
   const searchByPinyin = useCallback((query, limit = 200) => {
     if (!cachedPinyin || !query.trim()) return [];
-    const key     = normalise(query);
-    const matches = cachedPinyin.get(key) ?? [];
-    return matches
-      .slice()
+    const words      = query.trim().split(/\s+/);
+    const pinyinKey  = normalise(words[0]);
+    const defTerms   = words.slice(1).map(w => w.toLowerCase()).filter(Boolean);
+    const candidates = cachedPinyin.get(pinyinKey) ?? [];
+
+    let scored = candidates.map(entry => ({
+      entry,
+      hits: defTerms.length ? scoreMeanings(entry, defTerms) : 0,
+    }));
+
+    if (defTerms.length > 0) {
+      const withHits = scored.filter(s => s.hits > 0);
+      if (withHits.length > 0) scored = withHits;
+    }
+
+    return scored
       .sort((a, b) => {
-        // Single characters always sort before compounds
-        const aLen = [...a.simplified].length;
-        const bLen = [...b.simplified].length;
-        if (aLen !== bLen) return aLen - bLen;
-        return 0;
+        if (b.hits !== a.hits) return b.hits - a.hits;
+        // Single characters sort before compounds
+        const aLen = [...a.entry.simplified].length;
+        const bLen = [...b.entry.simplified].length;
+        return aLen - bLen;
       })
-      .slice(0, limit);
+      .slice(0, limit)
+      .map(s => s.entry);
   }, []);
 
   return { lookup, lookupMany, searchByPinyin, loading, error};
