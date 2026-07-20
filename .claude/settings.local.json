@@ -11,7 +11,10 @@
       "Bash(git push *)",
       "Bash(xargs -0 du -h)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://github.com/jhli3/hanzi-graph.git)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(bash tools/check-all.sh)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)"
     ]
   }
 }
