@@ -10,9 +10,15 @@ const EMPTY_FORM = {
   isRadical: false, strokes: '', note: '',
 };
 
-// Shared field set — pinyin / meaning / strokes / radical / note.
+// Shared field set — pinyin / meaning / strokes / note.
 // Used by both the dictionary confirm-stage and the manual-entry form so
 // the two paths stay in sync instead of drifting into two field sets.
+//
+// No radical/primitive checkbox — that used to double as the control for
+// node fill color, which is now derived from graph depth instead (see
+// src/utils/nodeDepth.js). isRadical still exists on node data (defaults
+// false here) since the detail panel's "radical" badge reads it, but it's
+// no longer settable from this form.
 //
 // No discrete tone field — a single tone selector can't represent a
 // multi-syllable phrase (东西 has two different tones on two syllables).
@@ -44,14 +50,6 @@ function CharacterFields({ form, setForm }) {
         <input className="modal__input" type="text" value={form.meaning}
           onChange={e => setForm(f => ({ ...f, meaning: e.target.value }))}
           placeholder="e.g. bright, clear, luminous" />
-      </div>
-
-      <div className="modal__field modal__field--checkbox">
-        <label className="modal__checkbox-label">
-          <input type="checkbox" checked={form.isRadical}
-            onChange={e => setForm(f => ({ ...f, isRadical: e.target.checked }))} />
-          <span>Mark as radical / primitive</span>
-        </label>
       </div>
 
       <div className="modal__field modal__field--full">

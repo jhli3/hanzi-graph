@@ -128,10 +128,12 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 .react-flow__pane     { cursor: default !important; }
 
 /* ─── Bottom nav ─────────────────────────────────────────────────────────────
-   Two separate elements: a tool-group pill (Explore/pan · Connect, plus the
-   component·semantic sub-choice when Connect is active) and, apart from it,
-   a standalone Add character text button. Reset lives in git history — it's
-   hidden for now since Jen doesn't use it in her own workflow. */
+   Two separate elements: a pill choosing which edge type the next
+   handle-to-handle drag creates (dragging a node body always moves it,
+   dragging from a handle always draws an edge — no separate "connect mode"
+   to switch into first), and, apart from it, a standalone Add character
+   text button. Reset lives in git history — it's hidden for now since Jen
+   doesn't use it in her own workflow. */
 .bottom-nav {
   position: absolute;
   bottom: 20px;
@@ -172,31 +174,16 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 }
 .bottom-nav__add-btn:hover { background: var(--text-primary); color: var(--surface); }
 
-.bottom-toolbar__divider {
-  width: 0.5px;
-  height: 22px;
-  background: var(--border);
-  margin: 0 4px;
+.bottom-toolbar__label {
+  padding: 0 4px 0 10px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  white-space: nowrap;
   flex-shrink: 0;
 }
-
-.bottom-toolbar__btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-  flex-shrink: 0;
-}
-.bottom-toolbar__btn:hover     { background: var(--surface-muted); color: var(--text-primary); }
-.bottom-toolbar__btn--active   { background: var(--surface-dark); color: #F1EFE8; }
-.bottom-toolbar__btn--active:hover { background: var(--surface-dark); color: #F1EFE8; }
 
 .bottom-toolbar__chip {
   height: 30px;
@@ -215,24 +202,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 }
 .bottom-toolbar__chip:hover     { background: var(--surface-muted); color: var(--text-primary); }
 .bottom-toolbar__chip--active   { background: var(--surface-muted); color: var(--text-primary); font-weight: 500; }
-
-/* ─── Connect hint ───────────────────────────────────────────────────────────── */
-.connect-hint {
-  position: absolute;
-  bottom: 84px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--surface-dark);
-  color: #E8E6E0;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.05em;
-  padding: 7px 16px;
-  border-radius: 999px;
-  z-index: 10;
-  pointer-events: none;
-}
-.connect-hint strong { color: #FFFFFF; }
 
 /* ─── React Flow built-in overrides ─────────────────────────────────────────── */
 .rf-controls {
@@ -293,29 +262,40 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   opacity: 0.2;
 }
 
-/* Panel header */
+/* Panel header — stacked (char box full-width, meta in a row below) rather
+   than side-by-side, same reasoning as .modal__char-row: a fixed-width char
+   next to a meta column couldn't fit multi-character entries/phrases like
+   东西. Char row reserves right-side clearance so a long phrase's dynamic
+   font-size (see charFontSize in DetailPanel.jsx) doesn't run under the
+   close button. */
 .detail-panel__header {
   padding: 16px 16px 14px;
   border-bottom: 0.5px solid var(--border);
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   position: relative;
 }
 .detail-panel__char-hero {
   font-family: var(--font-serif);
-  font-size: 52px;
-  font-weight: 700;
   line-height: 1;
   color: var(--text-primary);
-  flex-shrink: 0;
+  width: 100%;
+  padding-right: 30px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.detail-panel__char-meta { flex: 1; padding-top: 6px; }
+.detail-panel__char-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
 .detail-panel__pinyin {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 2px;
 }
 .detail-panel__meaning {
   font-size: 12px;
@@ -326,7 +306,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 }
 .detail-panel__badge {
   display: inline-block;
-  margin-top: 5px;
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.08em;
@@ -608,26 +587,24 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   border-color: var(--border-strong);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-.hanzi-node--radical {
-  background: var(--node-radical-bg);
-  border-color: transparent;
-}
 .hanzi-node--selected {
   border-color: var(--text-primary) !important;
   border-width: 1.5px;
   box-shadow: 0 0 0 3px rgba(30,30,28,0.07);
 }
 
+/* Background and all three text colors below are interpolated per node in
+   JS from data.depthT (see COLOR_ROOT/COLOR_LEAF in HanziNode.jsx) rather
+   than switching between two fixed radical/compound states — that file has
+   the up-to-date contrast-ratio notes for these color pairs. */
 .hanzi-node__char {
   font-family: var(--font-serif);
   /* font-size set inline per-node (see charFontSize in HanziNode.jsx) so
      longer phrases shrink to fit the fixed 80x80 node instead of overflowing */
   line-height: 1;
-  color: var(--text-primary);
   margin-bottom: 3px;
   max-width: 100%;
 }
-.hanzi-node--radical .hanzi-node__char { color: var(--node-radical-text); }
 
 /* Pinyin/meaning aren't font-scaled like the character is — instead they
    clip with an ellipsis so a long phrase's romanization can't blow out the
@@ -635,8 +612,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 .hanzi-node__pinyin {
   font-family: var(--font-mono);
   font-size: 9px;
-  /* was --text-tertiary (#888780, 3.6:1 on white) — tightened for AA */
-  color: #5F5E5A;
   letter-spacing: 0.04em;
   line-height: 1;
   max-width: 100%;
@@ -644,13 +619,9 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* was #6B6B68 (2.6:1 on the radical bg) */
-.hanzi-node--radical .hanzi-node__pinyin { color: #B8B6AE; }
 
 .hanzi-node__meaning {
   font-size: 8px;
-  /* was --text-ghost (#B4B2A9, 2.1:1 on white) */
-  color: #767570;
   line-height: 1;
   margin-top: 1px;
   max-width: 100%;
@@ -658,17 +629,25 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* was #4A4A47 (1.6:1 on the radical bg — effectively invisible) */
-.hanzi-node--radical .hanzi-node__meaning { color: #9C9A93; }
 
-/* React Flow handle dots — subtle */
+/* React Flow handle dots — subtle to look at, much bigger to click/drag.
+   The visible dot stays small (10px) to match the node's delicate feel;
+   ::before extends the actual hit/drag target well past it (to ~28px)
+   using the standard invisible-pseudo-element hit-area trick — clicks
+   landing in that padding still resolve to this element since ::before
+   isn't a separate DOM node. */
 .hanzi-handle {
-  width: 8px !important;
-  height: 8px !important;
+  width: 10px !important;
+  height: 10px !important;
   background: var(--border-strong) !important;
   border: 1.5px solid var(--surface) !important;
   opacity: 0;
   transition: opacity 0.15s;
+}
+.hanzi-handle::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
 }
 .hanzi-node:hover .hanzi-handle,
 .react-flow__node.selected .hanzi-handle { opacity: 1; }
@@ -851,7 +830,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
 }
 .modal__field { display: flex; flex-direction: column; gap: 4px; }
 .modal__field--full { grid-column: 1 / -1; }
-.modal__field--checkbox { grid-column: 1 / -1; }
 
 .modal__label {
   font-family: var(--font-mono);
@@ -885,12 +863,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text-p
   font-style: italic;
   font-size: 12px;
   line-height: 1.5;
-}
-
-.modal__checkbox-label {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--text-secondary);
-  cursor: pointer;
 }
 
 .modal__error {

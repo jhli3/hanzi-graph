@@ -61,9 +61,7 @@ export const useGraphStore = create((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
   selectedNodeId: null,
-  pendingEdgeSource: null,   // id of node clicked when in 'connect' mode
-  edgeMode: 'component',     // 'component' | 'semantic'
-  toolMode: 'select',        // 'select' | 'connect'
+  edgeMode: 'component',     // 'component' | 'semantic' — which type the next drag-to-connect creates
 
   // ── React Flow handlers ───────────────────────────────────────────────────
   onNodesChange(changes) {
@@ -105,10 +103,6 @@ export const useGraphStore = create((set, get) => ({
   },
 
   // ── Toolbar ───────────────────────────────────────────────────────────────
-  setToolMode(mode) {
-    set({ toolMode: mode });
-  },
-
   setEdgeMode(mode) {
     set({ edgeMode: mode });
   },

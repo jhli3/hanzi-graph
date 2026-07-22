@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useGraphStore } from '../hooks/useGraphStore';
 import StrokeOrderWriter from './StrokeOrderWriter';
+import { charFontSize } from '../utils/charFontSize';
 
 const TONE_LABEL = ['', '1st — flat', '2nd — rising', '3rd — dip-rise', '4th — falling'];
+
+// Panel is --panel-width (248px) wide; header padding + the char row's own
+// right-side clearance for the close button leave ~180px of usable width.
+// Much roomier than the 80px node, so most phrases stay at full size —
+// only long entries (the modal allows up to 12 chars) shrink noticeably.
+const CHAR_HERO_FONT_MAX = 52;
+const CHAR_HERO_FONT_MIN = 22;
+const CHAR_HERO_USABLE_WIDTH = 180;
 
 export default function DetailPanel() {
   const nodes        = useGraphStore(s => s.nodes);
@@ -68,7 +77,10 @@ export default function DetailPanel() {
     <aside className="detail-panel">
       {/* Header */}
       <div className="detail-panel__header">
-        <div className="detail-panel__char-hero">{char}</div>
+        <div
+          className="detail-panel__char-hero"
+          style={{ fontSize: charFontSize(char, { min: CHAR_HERO_FONT_MIN, max: CHAR_HERO_FONT_MAX, maxWidth: CHAR_HERO_USABLE_WIDTH }) }}
+        >{char}</div>
         <div className="detail-panel__char-meta">
           <div className="detail-panel__pinyin">{pinyin}</div>
           <div className="detail-panel__meaning">{meaning}</div>

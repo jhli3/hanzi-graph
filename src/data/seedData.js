@@ -1,6 +1,9 @@
 // ─── Seed characters ────────────────────────────────────────────────────────
 // Each character node stored in localStorage under key "hanzi-graph-nodes"
-// isRadical: true means it's a building-block primitive (rendered dark)
+// isRadical: true means it's a building-block primitive — surfaced as the
+// "radical" badge in the detail panel and the checkbox in the add-character
+// modal. Node fill/text color is driven separately, by graph depth (see
+// src/utils/nodeDepth.js), not by this field.
 
 export const SEED_NODES = [
   {

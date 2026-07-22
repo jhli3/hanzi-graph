@@ -40,7 +40,7 @@ src/
 │   └── seedData.js          ← Starting characters (日月明木林森光) + edges
 │
 ├── hooks/
-│   ├── useGraphStore.js     ← All state: nodes, edges, selection, tool mode, localStorage
+│   ├── useGraphStore.js     ← All state: nodes, edges, selection, edge-type mode, localStorage
 │   ├── useCedict.js         ← Lazy-loads cedict.json, exposes lookup() + searchByPinyin()
 │   └── useForceLayout.js    ← d3-force simulation, pinning, drag handlers
 │

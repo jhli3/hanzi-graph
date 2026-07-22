@@ -8,12 +8,11 @@ import App from './App';
 // large CJK families into dozens of unicode-range-scoped files and fetches
 // each lazily on first use, so any character that hadn't been rendered yet
 // briefly shows in a fallback sans font while its chunk downloads — exactly
-// what showed up in the search results grid for rarer characters. These two
-// imports are each a single ~1.5MB file with no internal unicode-range
-// splitting, so the whole subset loads once, up front, with nothing left to
-// race.
+// what showed up in the search results grid for rarer characters. This is a
+// single ~1.5MB file with no internal unicode-range splitting, so the whole
+// subset loads once, up front, with nothing left to race. Only the 400
+// (regular) weight is loaded — nothing in the app renders CJK text bold.
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css';
-import '@fontsource/noto-serif-sc/chinese-simplified-700.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

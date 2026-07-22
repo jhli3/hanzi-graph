@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -9,11 +9,20 @@ import 'reactflow/dist/style.css';
 
 import { useGraphStore } from './hooks/useGraphStore';
 import { useForceLayout } from './hooks/useForceLayout';
+import { computeDepthT } from './utils/nodeDepth';
+import { lerpRgb, rgbToCss, easeLighter } from './utils/colorInterp';
 import HanziNode from './components/HanziNode';
 import { ComponentEdge, SemanticEdge } from './components/HanziEdges';
 import DetailPanel from './components/DetailPanel';
 import AddCharacterModal from './components/AddCharacterModal';
 import './styles/app.css';
+
+// Mirrors the same design-token pair + eased skew HanziNode.jsx interpolates
+// node fill from, so the minimap's dots stay visually consistent with the
+// canvas (see the GRADIENT_SKEW comment there for why it's eased).
+const MINIMAP_COLOR_ROOT = '#2C2C2A'; // --node-radical-bg
+const MINIMAP_COLOR_LEAF = '#FFFFFF'; // --node-bg
+const MINIMAP_GRADIENT_SKEW = 2.80;
 
 // ─── Register custom types ────────────────────────────────────────────────────
 const nodeTypes = { hanziNode: HanziNode };
@@ -41,14 +50,21 @@ function GraphApp() {
   const onNodesChange  = useGraphStore(s => s.onNodesChange);
   const onEdgesChange  = useGraphStore(s => s.onEdgesChange);
   const onConnect      = useGraphStore(s => s.onConnect);
-  const toolMode       = useGraphStore(s => s.toolMode);
   const edgeMode       = useGraphStore(s => s.edgeMode);
-  const setToolMode    = useGraphStore(s => s.setToolMode);
   const setEdgeMode    = useGraphStore(s => s.setEdgeMode);
   const clearSelection = useGraphStore(s => s.clearSelection);
   const selectedNodeId = useGraphStore(s => s.selectedNodeId);
 
   const [showModal, setShowModal] = useState(false);
+
+  // ── Per-node depth within its own weakly-connected component (component
+  // edges only), injected as data.depthT for HanziNode + the minimap to
+  // interpolate fill/text color from. Derived, not persisted — recomputed
+  // whenever the underlying nodes/edges change. ──────────────────────────
+  const depthNodes = useMemo(() => {
+    const depthT = computeDepthT(nodes, edges);
+    return nodes.map(n => ({ ...n, data: { ...n.data, depthT: depthT.get(n.id) ?? 0 } }));
+  }, [nodes, edges]);
 
   // ── Force layout — always on, nothing to anchor. Dragging a node just
   // fixes it while you hold it; it rejoins the simulation on drop. ────────
@@ -84,7 +100,7 @@ function GraphApp() {
 
         {/* React Flow canvas */}
         <ReactFlow
-          nodes={nodes}
+          nodes={depthNodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -92,11 +108,10 @@ function GraphApp() {
           onPaneClick={handlePaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          nodesDraggable={toolMode === 'select'}
-          nodesConnectable={toolMode === 'connect'}
           onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
+          connectionRadius={60}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.05}
@@ -110,56 +125,35 @@ function GraphApp() {
           />
           <Controls showInteractive={false} className="rf-controls" />
           <MiniMap
-            nodeColor={n => n.data?.isRadical ? 'var(--node-radical-bg)' : 'var(--node-bg)'}
+            nodeColor={n => rgbToCss(lerpRgb(MINIMAP_COLOR_ROOT, MINIMAP_COLOR_LEAF, easeLighter(n.data?.depthT ?? 0, MINIMAP_GRADIENT_SKEW)))}
             maskColor="var(--minimap-mask)"
             className="rf-minimap"
           />
         </ReactFlow>
 
-        {/* Edge mode hint */}
-        {toolMode === 'connect' && (
-          <div className="connect-hint">
-            Drag from any node handle to another to draw a <strong>{edgeMode}</strong> edge
-          </div>
-        )}
-
-        {/* ── Bottom nav — tool group + separate Add character button ───── */}
+        {/* ── Bottom nav — edge-type chooser + separate Add character button.
+            Dragging a node body moves it and dragging from a handle draws
+            an edge, always, at the same time — React Flow already tells
+            these apart on its own (handle vs. body), so there's no separate
+            "connect mode" to switch into first. This picker just controls
+            which edge type the next handle-to-handle drag creates. ───────── */}
         <div className="bottom-nav">
-          <div className="bottom-toolbar" role="toolbar" aria-label="Canvas tools">
+          <div className="bottom-toolbar" role="toolbar" aria-label="Edge type">
+            <span className="bottom-toolbar__label">connect as</span>
             <button
-              className={`bottom-toolbar__btn ${toolMode === 'select' ? 'bottom-toolbar__btn--active' : ''}`}
-              onClick={() => setToolMode('select')}
-              title="Explore"
+              className={`bottom-toolbar__chip ${edgeMode === 'component' ? 'bottom-toolbar__chip--active' : ''}`}
+              onClick={() => setEdgeMode('component')}
+              title="Drag between characters to draw a component (solid) edge"
             >
-              <span className="material-symbols-outlined">pan_tool</span>
+              component
             </button>
             <button
-              className={`bottom-toolbar__btn ${toolMode === 'connect' ? 'bottom-toolbar__btn--active' : ''}`}
-              onClick={() => setToolMode('connect')}
-              title="Connect — drag between characters to draw an edge"
+              className={`bottom-toolbar__chip ${edgeMode === 'semantic' ? 'bottom-toolbar__chip--active' : ''}`}
+              onClick={() => setEdgeMode('semantic')}
+              title="Drag between characters to draw a semantic (dashed) edge"
             >
-              <span className="material-symbols-outlined">polyline</span>
+              semantic
             </button>
-
-            {toolMode === 'connect' && (
-              <>
-                <div className="bottom-toolbar__divider" />
-                <button
-                  className={`bottom-toolbar__chip ${edgeMode === 'component' ? 'bottom-toolbar__chip--active' : ''}`}
-                  onClick={() => setEdgeMode('component')}
-                  title="Next edge will be: component (solid)"
-                >
-                  component
-                </button>
-                <button
-                  className={`bottom-toolbar__chip ${edgeMode === 'semantic' ? 'bottom-toolbar__chip--active' : ''}`}
-                  onClick={() => setEdgeMode('semantic')}
-                  title="Next edge will be: semantic (dashed)"
-                >
-                  semantic
-                </button>
-              </>
-            )}
           </div>
 
           {/* Reset is hidden for now — not part of Jen's own personal workflow.
